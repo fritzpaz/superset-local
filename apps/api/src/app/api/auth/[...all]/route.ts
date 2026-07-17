@@ -1,23 +1,9 @@
 import { auth } from "@superset/auth/server";
 import { isTrustedClientAzp } from "@superset/shared/auth";
 import { toNextJsHandler } from "better-auth/next-js";
+import { decodeJwt } from "jose";
 
 const { GET: _GET, POST: _POST } = toNextJsHandler(auth);
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-	const payloadSegment = token.split(".")[1];
-	if (!payloadSegment) return null;
-	try {
-		const parsed = JSON.parse(
-			Buffer.from(payloadSegment, "base64url").toString("utf8"),
-		);
-		return parsed && typeof parsed === "object"
-			? (parsed as Record<string, unknown>)
-			: null;
-	} catch {
-		return null;
-	}
-}
 
 /**
  * Userinfo returns the token subject's identity, so mirror the trusted-client
@@ -27,20 +13,24 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
  * rejected by Better Auth itself.
  */
 function untrustedUserinfoResponse(req: Request): Response | null {
-	const match = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i);
-	const token = match?.[1];
+	const token = req.headers
+		.get("authorization")
+		?.match(/^Bearer\s+(.+)$/i)?.[1];
 	if (!token) return null;
-	const payload = decodeJwtPayload(token);
-	if (payload && !isTrustedClientAzp(payload.azp)) {
-		return new Response(JSON.stringify({ error: "invalid_token" }), {
-			status: 401,
-			headers: {
-				"WWW-Authenticate": 'Bearer error="invalid_token"',
-				"Content-Type": "application/json",
-			},
-		});
+	let azp: unknown;
+	try {
+		azp = decodeJwt(token).azp;
+	} catch {
+		return null;
 	}
-	return null;
+	if (isTrustedClientAzp(azp)) return null;
+	return new Response(JSON.stringify({ error: "invalid_token" }), {
+		status: 401,
+		headers: {
+			"WWW-Authenticate": 'Bearer error="invalid_token"',
+			"Content-Type": "application/json",
+		},
+	});
 }
 
 /**
