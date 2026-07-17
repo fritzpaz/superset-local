@@ -1,7 +1,5 @@
 import type { ApiAuthProvider } from "../types";
-
-const JWT_REFRESH_BUFFER_MS = 5 * 60 * 1000;
-const JWT_CACHE_DURATION_MS = 55 * 60 * 1000;
+import { getJwtExpiresAtMs, JWT_REFRESH_LEEWAY_MS } from "./jwt-expiry";
 
 function looksLikeJwt(token: string): boolean {
 	const parts = token.split(".");
@@ -46,7 +44,7 @@ export class JwtApiAuthProvider implements ApiAuthProvider {
 	async getJwt(): Promise<string> {
 		if (
 			this.cachedJwt &&
-			Date.now() < this.cachedJwtExpiresAt - JWT_REFRESH_BUFFER_MS
+			Date.now() < this.cachedJwtExpiresAt - JWT_REFRESH_LEEWAY_MS
 		) {
 			return this.cachedJwt;
 		}
@@ -76,7 +74,7 @@ export class JwtApiAuthProvider implements ApiAuthProvider {
 		}
 		const data = (await response.json()) as { token: string };
 		this.cachedJwt = data.token;
-		this.cachedJwtExpiresAt = Date.now() + JWT_CACHE_DURATION_MS;
+		this.cachedJwtExpiresAt = getJwtExpiresAtMs(data.token, Date.now());
 		return data.token;
 	}
 }

@@ -11,19 +11,3 @@ export function decodeJwtExpiresAtMs(token: string): number | null {
 		return null;
 	}
 }
-
-const JWT_REFRESH_LEEWAY_MS = 60_000;
-const MINIMUM_REFRESH_DELAY_MS = 30_000;
-
-export function getJwtRefreshDelayMs(
-	token: string,
-	now: number,
-	fallbackDelayMs: number,
-): number {
-	const expiresAtMs = decodeJwtExpiresAtMs(token);
-	if (expiresAtMs === null) return fallbackDelayMs;
-	return Math.max(
-		MINIMUM_REFRESH_DELAY_MS,
-		expiresAtMs - now - JWT_REFRESH_LEEWAY_MS,
-	);
-}

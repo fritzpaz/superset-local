@@ -14,6 +14,30 @@ if (process.env.NODE_ENV !== "production") {
 const config: NextConfig = {
 	reactCompiler: true,
 	typescript: { ignoreBuildErrors: true },
+	async headers() {
+		return [
+			{
+				source: "/(.*)",
+				headers: [
+					...(process.env.NODE_ENV === "production"
+						? [
+								{
+									key: "Strict-Transport-Security",
+									value: "max-age=31536000; includeSubDomains",
+								},
+							]
+						: []),
+					{
+						key: "Permissions-Policy",
+						value: "camera=(), geolocation=(), microphone=()",
+					},
+					{ key: "Referrer-Policy", value: "no-referrer" },
+					{ key: "X-Content-Type-Options", value: "nosniff" },
+					{ key: "X-Frame-Options", value: "DENY" },
+				],
+			},
+		];
+	},
 
 	images: {
 		remotePatterns: [

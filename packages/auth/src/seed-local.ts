@@ -2,7 +2,6 @@ import { db } from "@superset/db/client";
 import { users } from "@superset/db/schema";
 import { isSupersetLocalMode } from "@superset/shared/local-runtime";
 import { eq } from "drizzle-orm";
-import { auth } from "./server";
 
 async function seedLocalAccount(): Promise<void> {
 	if (!isSupersetLocalMode(process.env)) {
@@ -25,6 +24,10 @@ async function seedLocalAccount(): Promise<void> {
 
 	let user = await db.query.users.findFirst({ where: eq(users.email, email) });
 	if (!user) {
+		// The regulated API rejects every public signup. This flag is scoped to
+		// this one-shot bootstrap process, which exits immediately after seeding.
+		process.env.SUPERSET_AUTH_BOOTSTRAP_SIGNUP = "true";
+		const { auth } = await import("./server");
 		await auth.api.signUpEmail({ body: { email, password, name } });
 		user = await db.query.users.findFirst({ where: eq(users.email, email) });
 	}
@@ -32,7 +35,7 @@ async function seedLocalAccount(): Promise<void> {
 
 	await db
 		.update(users)
-		.set({ onboardedAt: new Date() })
+		.set({ emailVerified: true, onboardedAt: new Date() })
 		.where(eq(users.id, user.id));
 
 	console.log(`Local administrator ready: ${email}`);

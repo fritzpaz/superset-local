@@ -42,7 +42,8 @@ function jwtIsFresh(): boolean {
 }
 
 export function getJwt(): string | null {
-	// Relay JWTs rotate hourly, but this cache only updates when some API
+	// Relay JWT lifetime is deployment-policy controlled, but this cache only
+	// updates when some API
 	// response happens to carry `set-auth-jwt`. Sync callers (WS URL builders,
 	// reconnect loops) can't await a refresh, so kick one off in the background
 	// and let their next attempt pick up the fresh token.

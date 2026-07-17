@@ -11,23 +11,33 @@ export interface WhereClause {
 	params: unknown[];
 }
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+export interface JwtVerificationConfig {
+	audience: string;
+	issuer: string;
+	jwksUrl: string;
+}
 
-function getJWKS(authUrl: string): ReturnType<typeof createRemoteJWKSet> {
-	if (!jwks) {
-		jwks = createRemoteJWKSet(new URL("/api/auth/jwks", authUrl));
+const jwksByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getJWKS(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
+	const cached = jwksByUrl.get(jwksUrl);
+	if (cached) {
+		return cached;
 	}
+
+	const jwks = createRemoteJWKSet(new URL(jwksUrl));
+	jwksByUrl.set(jwksUrl, jwks);
 	return jwks;
 }
 
 export async function verifyJWT(
 	token: string,
-	authUrl: string,
+	config: JwtVerificationConfig,
 ): Promise<AuthContext | null> {
 	try {
-		const { payload } = await jwtVerify(token, getJWKS(authUrl), {
-			issuer: authUrl,
-			audience: authUrl,
+		const { payload } = await jwtVerify(token, getJWKS(config.jwksUrl), {
+			issuer: config.issuer,
+			audience: config.audience,
 		});
 
 		const sub = payload.sub;

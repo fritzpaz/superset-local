@@ -109,6 +109,8 @@ deployment must use OS/network egress enforcement and packet/DNS capture as desc
 - [Deployment and configuration](docs/DEPLOYMENT.md)
 - [Cloud-dependent feature matrix](docs/FEATURE_COMPATIBILITY.md)
 - [Threat model and regulated-environment guidance](docs/THREAT_MODEL.md)
+- [HIPAA security gap and control matrix](docs/HIPAA_CONTROL_MATRIX.md)
+- [AWS production infrastructure](../infra/aws/README.md)
 - [Upstream update workflow](docs/UPSTREAM_MAINTENANCE.md)
 
 ## Development

@@ -1,5 +1,10 @@
 # Deployment and configuration
 
+For the maintained AWS production baseline, migration workflow, durability profiles, and
+regulated-workload operator checklist, see [`infra/aws/README.md`](../../infra/aws/README.md) and
+the [HIPAA control matrix](HIPAA_CONTROL_MATRIX.md). Those materials are engineering guidance,
+not a compliance certification.
+
 ## Profiles
 
 `local` runs Postgres 17, Redis 7, Electric 1.7, and a Neon compatibility proxy with persistent

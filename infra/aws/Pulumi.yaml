@@ -1,0 +1,6 @@
+name: superset-hipaa-aws
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+description: Durable, cost-conscious AWS deployment baseline for Superset Local

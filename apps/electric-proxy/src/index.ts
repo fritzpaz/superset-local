@@ -3,28 +3,53 @@ import { buildUpstreamUrl } from "./electric";
 import type { Env } from "./types";
 import { buildWhereClause } from "./where";
 
-const CORS_HEADERS: Record<string, string> = {
-	"Access-Control-Allow-Origin": "*",
+const BASE_CORS_HEADERS: Record<string, string> = {
 	"Access-Control-Allow-Methods": "GET, OPTIONS",
 	"Access-Control-Allow-Headers": "Authorization, Content-Type",
 	"Access-Control-Expose-Headers":
 		"electric-handle, electric-offset, electric-schema, electric-up-to-date, electric-cursor",
 };
 
-function corsResponse(status: number, body: string): Response {
-	return new Response(body, { status, headers: CORS_HEADERS });
+function isAllowedOrigin(origin: string | null, env: Env): origin is string {
+	if (!origin || origin === "null") return false;
+	return (env.ELECTRIC_ALLOWED_ORIGIN ?? "")
+		.split(",")
+		.map((allowedOrigin) => allowedOrigin.trim())
+		.some((allowedOrigin) => allowedOrigin === origin);
 }
 
-function addCorsHeaders(response: Response): Response {
+function corsHeaders(request: Request, env: Env): Headers {
+	const headers = new Headers(BASE_CORS_HEADERS);
+	const requestOrigin = request.headers.get("Origin");
+	if (isAllowedOrigin(requestOrigin, env)) {
+		headers.set("Access-Control-Allow-Origin", requestOrigin);
+	}
+	headers.set("Vary", "Authorization, Origin");
+	return headers;
+}
+
+function corsResponse(
+	request: Request,
+	env: Env,
+	status: number,
+	body: string,
+): Response {
+	return new Response(body, { status, headers: corsHeaders(request, env) });
+}
+
+function addCorsHeaders(
+	response: Response,
+	request: Request,
+	env: Env,
+): Response {
 	const headers = new Headers(response.headers);
 	if (headers.get("content-encoding")) {
 		headers.delete("content-encoding");
 		headers.delete("content-length");
 	}
-	for (const [key, value] of Object.entries(CORS_HEADERS)) {
+	for (const [key, value] of corsHeaders(request, env)) {
 		headers.set(key, value);
 	}
-	headers.set("Vary", "Authorization");
 	return new Response(response.body, {
 		status: response.status,
 		statusText: response.statusText,
@@ -32,42 +57,74 @@ function addCorsHeaders(response: Response): Response {
 	});
 }
 
-export default {
+export const handler = {
 	async fetch(request: Request, env: Env): Promise<Response> {
+		const url = new URL(request.url);
+		if (url.pathname === "/_health") {
+			return new Response("ok", {
+				status: 200,
+				headers: { "Cache-Control": "no-store" },
+			});
+		}
+
 		if (request.method === "OPTIONS") {
-			return new Response(null, { status: 204, headers: CORS_HEADERS });
+			const requestOrigin = request.headers.get("Origin");
+			if (!isAllowedOrigin(requestOrigin, env)) {
+				return corsResponse(request, env, 403, "Origin not allowed");
+			}
+			return new Response(null, {
+				status: 204,
+				headers: corsHeaders(request, env),
+			});
 		}
 
 		if (request.method !== "GET") {
-			return corsResponse(405, "Method not allowed");
+			return corsResponse(request, env, 405, "Method not allowed");
 		}
 
 		const authHeader = request.headers.get("Authorization");
 		if (!authHeader?.startsWith("Bearer ")) {
-			return corsResponse(401, "Missing or invalid Authorization header");
+			return corsResponse(
+				request,
+				env,
+				401,
+				"Missing or invalid Authorization header",
+			);
 		}
 
 		const token = authHeader.slice(7);
-		const auth = await verifyJWT(token, env.AUTH_URL);
+		const auth = await verifyJWT(token, {
+			audience: env.AUTH_JWT_AUDIENCE,
+			issuer: env.AUTH_JWT_ISSUER,
+			jwksUrl: env.AUTH_JWKS_URL,
+		});
 		if (!auth) {
-			return corsResponse(401, "Invalid or expired token");
+			return corsResponse(request, env, 401, "Invalid or expired token");
 		}
-
-		const url = new URL(request.url);
 
 		const tableName = url.searchParams.get("table");
 		if (!tableName) {
-			return corsResponse(400, "Missing table parameter");
+			return corsResponse(request, env, 400, "Missing table parameter");
 		}
 
 		const organizationId = url.searchParams.get("organizationId");
 
 		if (tableName !== "auth.organizations") {
 			if (!organizationId) {
-				return corsResponse(400, "Missing organizationId parameter");
+				return corsResponse(
+					request,
+					env,
+					400,
+					"Missing organizationId parameter",
+				);
 			}
 			if (!auth.organizationIds.includes(organizationId)) {
-				return corsResponse(403, "Not a member of this organization");
+				return corsResponse(
+					request,
+					env,
+					403,
+					"Not a member of this organization",
+				);
 			}
 		}
 
@@ -78,7 +135,7 @@ export default {
 			authorizedOrganizationIds,
 		);
 		if (!whereClause) {
-			return corsResponse(400, `Unknown table: ${tableName}`);
+			return corsResponse(request, env, 400, `Unknown table: ${tableName}`);
 		}
 
 		const upstreamUrl = buildUpstreamUrl(url, tableName, whereClause, env);
@@ -88,9 +145,10 @@ export default {
 
 		const response = await fetch(upstreamUrl.toString(), {
 			headers: upstreamHeaders,
-			cf: { cacheEverything: true },
 		});
 
-		return addCorsHeaders(response);
+		return addCorsHeaders(response, request, env);
 	},
 } satisfies ExportedHandler<Env>;
+
+export default handler;

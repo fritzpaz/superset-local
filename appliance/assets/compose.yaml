@@ -116,6 +116,9 @@ services:
     ports:
       - "127.0.0.1:${SUP_LOCAL_API_PORT:-3001}:3001"
     command: [bun, run, --cwd, apps/api, start]
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -133,9 +136,15 @@ services:
     image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
     env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
     environment:
-      AUTH_URL: http://api:3001/api/auth/jwks
+      AUTH_JWKS_URL: http://api:3001/api/auth/jwks
+      AUTH_JWT_AUDIENCE: ${NEXT_PUBLIC_API_URL}
+      AUTH_JWT_ISSUER: ${NEXT_PUBLIC_API_URL}
+      ELECTRIC_ALLOWED_ORIGIN: ${NEXT_PUBLIC_WEB_URL},superset-app://renderer
       ELECTRIC_SHAPE_URL: ${SUP_LOCAL_CONTAINER_ELECTRIC_URL}/v1/shape
-    command: [bun, run, --cwd, apps/electric-proxy, dev, --, --ip, 0.0.0.0]
+    command: [bun, run, --cwd, apps/electric-proxy, start:server]
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     ports:
       - "127.0.0.1:${SUP_LOCAL_ELECTRIC_PROXY_PORT:-8787}:8787"
     depends_on:
@@ -156,6 +165,9 @@ services:
     ports:
       - "127.0.0.1:${SUP_LOCAL_WEB_PORT:-3000}:3000"
     command: [bun, run, --cwd, apps/web, start]
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     depends_on:
       api:
         condition: service_healthy
