@@ -12,6 +12,10 @@ import {
 } from "electron";
 import { makeAppSetup } from "lib/electron-app/factories/app/setup";
 import {
+	PACKAGED_RENDERER_SCHEME,
+	resolvePackagedRendererPath,
+} from "lib/renderer-protocol";
+import {
 	handleAuthCallback,
 	loadToken,
 	parseAuthDeepLink,
@@ -304,6 +308,17 @@ if (process.env.NODE_ENV === "development") {
 
 protocol.registerSchemesAsPrivileged([
 	{
+		scheme: PACKAGED_RENDERER_SCHEME,
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+			corsEnabled: true,
+			stream: true,
+			codeCache: true,
+		},
+	},
+	{
 		scheme: "superset-icon",
 		privileges: {
 			standard: true,
@@ -342,6 +357,20 @@ if (!gotTheLock) {
 		registerWithMacOSNotificationCenter();
 		requestAppleEventsAccess();
 		requestLocalNetworkAccess();
+
+		const rendererRoot = path.resolve(__dirname, "../renderer");
+		const rendererProtocolHandler = (request: Request) => {
+			const rendererPath = resolvePackagedRendererPath(
+				rendererRoot,
+				request.url,
+			);
+			if (!rendererPath) return new Response("Not found", { status: 404 });
+			return net.fetch(pathToFileURL(rendererPath).toString());
+		};
+		protocol.handle(PACKAGED_RENDERER_SCHEME, rendererProtocolHandler);
+		session
+			.fromPartition("persist:superset")
+			.protocol.handle(PACKAGED_RENDERER_SCHEME, rendererProtocolHandler);
 
 		// Must register on both default session and the app's custom partition
 		const iconProtocolHandler = (request: Request) => {

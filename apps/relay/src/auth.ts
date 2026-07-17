@@ -35,7 +35,7 @@ export async function verifyJWT(
 
 		return { sub, email: email ?? "", organizationIds };
 	} catch (error) {
-		// Don't log expected hourly-rotation expiries, and log only the terse
+		// Don't log expected short-lived token expiries, and log only the terse
 		// message otherwise: the full error dumped a stack trace + decoded
 		// payload (plaintext emails) on every request at relay volume.
 		const code =

@@ -41,6 +41,10 @@ import * as Opts from "./internal/request-options";
 import * as Shims from "./internal/shims";
 import { readEnv } from "./internal/utils/env";
 import {
+	getJwtExpiresAtMs,
+	JWT_REFRESH_LEEWAY_MS,
+} from "./internal/utils/jwt-expiry";
+import {
 	formatRequestDetails,
 	type Logger,
 	type LogLevel,
@@ -594,14 +598,16 @@ export class Superset {
 	}
 
 	/**
-	 * Exchange the API key for a short-lived JWT (1h TTL on the server) and
-	 * cache it in memory. Refreshed 5 minutes before expiry to handle clock
-	 * skew. Concurrent host calls share a single in-flight exchange so we
-	 * don't fan out N token requests on a cold cache.
+	 * Exchange the API key for a short-lived JWT and cache it according to the
+	 * token's signed expiry. Concurrent host calls share a single in-flight
+	 * exchange so we don't fan out N token requests on a cold cache.
 	 */
 	private async _getJwt(): Promise<string> {
 		const now = Date.now();
-		if (this._jwtCache && this._jwtCache.expiresAt - 5 * 60_000 > now) {
+		if (
+			this._jwtCache &&
+			this._jwtCache.expiresAt - JWT_REFRESH_LEEWAY_MS > now
+		) {
 			return this._jwtCache.token;
 		}
 		if (this._jwtInflight) return this._jwtInflight;
@@ -633,10 +639,9 @@ export class Superset {
 		if (!body.token) {
 			throw new Errors.SupersetError("Auth token endpoint returned no token");
 		}
-		// Server issues 1h JWTs; cache for 55 minutes to be safe.
 		this._jwtCache = {
 			token: body.token,
-			expiresAt: Date.now() + 55 * 60_000,
+			expiresAt: getJwtExpiresAtMs(body.token, Date.now()),
 		};
 		return body.token;
 	}

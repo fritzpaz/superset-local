@@ -136,8 +136,10 @@ services:
     image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
     env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
     environment:
-      AUTH_URL: http://api:3001/api/auth/jwks
-      ELECTRIC_ALLOWED_ORIGIN: ${NEXT_PUBLIC_WEB_URL}
+      AUTH_JWKS_URL: http://api:3001/api/auth/jwks
+      AUTH_JWT_AUDIENCE: ${NEXT_PUBLIC_API_URL}
+      AUTH_JWT_ISSUER: ${NEXT_PUBLIC_API_URL}
+      ELECTRIC_ALLOWED_ORIGIN: ${NEXT_PUBLIC_WEB_URL},superset-app://renderer
       ELECTRIC_SHAPE_URL: ${SUP_LOCAL_CONTAINER_ELECTRIC_URL}/v1/shape
     command: [bun, run, --cwd, apps/electric-proxy, start:server]
     init: true

@@ -1,20 +1,20 @@
 import type { BrowserWindow } from "electron";
 import { env } from "shared/env.shared";
+import { PACKAGED_RENDERER_URL } from "./renderer-protocol";
 
 /** Window IDs defined in the router configuration */
 type WindowId = "main" | "about";
 
 /**
  * Load an Electron window with the appropriate URL for TanStack Router.
- * Uses hash-based routing for compatibility with Electron's file:// protocol.
+ * Uses hash-based routing in development and production.
  *
  * - Development: loads from Vite dev server at http://localhost:PORT/#/
- * - Production: loads from built HTML file with hash routing (#/)
+ * - Production: loads bundled assets from a standard, secure custom origin
  */
 export function registerRoute(props: {
 	id: WindowId;
 	browserWindow: BrowserWindow;
-	htmlFile: string;
 	query?: Record<string, string>;
 }): void {
 	const isDev = env.NODE_ENV === "development";
@@ -25,10 +25,10 @@ export function registerRoute(props: {
 		console.log("[window-loader] Loading development URL:", url);
 		props.browserWindow.loadURL(url);
 	} else {
-		// Production: load from file with hash routing
-		// TanStack Router uses hash-based routing, so we always start at #/
-		console.log("[window-loader] Loading file:", props.htmlFile);
-		props.browserWindow.loadFile(props.htmlFile, { hash: "/" });
+		// A custom standard origin avoids file:// privileges and gives CORS a
+		// concrete origin without weakening the Electric proxy to accept `null`.
+		console.log("[window-loader] Loading packaged URL:", PACKAGED_RENDERER_URL);
+		props.browserWindow.loadURL(PACKAGED_RENDERER_URL);
 	}
 
 	// Log successful loads

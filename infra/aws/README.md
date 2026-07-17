@@ -85,6 +85,22 @@ The stack generates database, Redis, auth, Electric, application-encryption, and
 secrets. It injects individual JSON keys from Secrets Manager into tasks; it does not expose
 secret values as Pulumi outputs.
 
+Secret injection is scoped by container. The API receives its database, authentication, Redis,
+and application-encryption credentials; the web server receives only the database,
+authentication, and rate-limit credentials needed by its server-side session checks; and the
+public Electric authorization proxy receives only the Electric upstream credential. The Redis
+adapter and one-off migration receive their own smaller sets. Do not replace these selectors with
+the complete runtime-secret object.
+
+The low-cost profile still co-locates API, web, proxy, and Redis adapter containers in one ECS
+task. Container-scoped injection prevents their environment variables from being copied into
+one another, but co-location retains a shared network and failure boundary. If the risk analysis
+requires stronger workload isolation, split the Electric proxy first into a 0.25-vCPU/0.5-GiB
+Fargate task and private service-discovery path, then split web, API, and Redis adapter as needed;
+give each task a distinct execution role, task role, security group, and Secrets Manager secret.
+That costs at least one additional continuously running Fargate task and requires replacing the
+current loopback service URLs.
+
 Database migrations are intentionally a separate, auditable one-off task instead of a side
 effect of every application restart. After the first `pulumi up`, run the exact command shown by:
 
@@ -163,6 +179,9 @@ fixed monthly-price promise.
 - Internal ALB-to-task and authorization-proxy-to-Electric traffic uses HTTP inside restricted VPC
   security-group paths.
 - Public-task HTTPS egress is CIDR-wide to avoid NAT/private-endpoint baseline cost.
+- The low-cost application profile co-locates web, API, Electric proxy, and Redis adapter
+  containers in one ECS task; secret environment injection is scoped, but network and failure
+  isolation require separate tasks and roles.
 - Single-AZ defaults favor cost over failover; use `highAvailability` when outage tolerance does
   not permit this.
 - The operator owns all desktop, host-service, model-provider, Git, email, workforce, incident,

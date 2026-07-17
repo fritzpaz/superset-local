@@ -10,10 +10,18 @@ const BASE_CORS_HEADERS: Record<string, string> = {
 		"electric-handle, electric-offset, electric-schema, electric-up-to-date, electric-cursor",
 };
 
+function isAllowedOrigin(origin: string | null, env: Env): origin is string {
+	if (!origin || origin === "null") return false;
+	return (env.ELECTRIC_ALLOWED_ORIGIN ?? "")
+		.split(",")
+		.map((allowedOrigin) => allowedOrigin.trim())
+		.some((allowedOrigin) => allowedOrigin === origin);
+}
+
 function corsHeaders(request: Request, env: Env): Headers {
 	const headers = new Headers(BASE_CORS_HEADERS);
 	const requestOrigin = request.headers.get("Origin");
-	if (requestOrigin && requestOrigin === env.ELECTRIC_ALLOWED_ORIGIN) {
+	if (isAllowedOrigin(requestOrigin, env)) {
 		headers.set("Access-Control-Allow-Origin", requestOrigin);
 	}
 	headers.set("Vary", "Authorization, Origin");
@@ -61,7 +69,7 @@ export const handler = {
 
 		if (request.method === "OPTIONS") {
 			const requestOrigin = request.headers.get("Origin");
-			if (!requestOrigin || requestOrigin !== env.ELECTRIC_ALLOWED_ORIGIN) {
+			if (!isAllowedOrigin(requestOrigin, env)) {
 				return corsResponse(request, env, 403, "Origin not allowed");
 			}
 			return new Response(null, {
@@ -85,7 +93,11 @@ export const handler = {
 		}
 
 		const token = authHeader.slice(7);
-		const auth = await verifyJWT(token, env.AUTH_URL);
+		const auth = await verifyJWT(token, {
+			audience: env.AUTH_JWT_AUDIENCE,
+			issuer: env.AUTH_JWT_ISSUER,
+			jwksUrl: env.AUTH_JWKS_URL,
+		});
 		if (!auth) {
 			return corsResponse(request, env, 401, "Invalid or expired token");
 		}

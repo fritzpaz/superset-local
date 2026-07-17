@@ -56,7 +56,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Reconnecting WebSocket for host-service endpoints (direct or relay-fronted).
  * partysocket evaluates the async URL provider before EVERY attempt, so each
  * dial carries a fresh token — the class of bug where a reconnect loop reuses
- * a URL signed with an hourly-rotated JWT (PR #5628) can't recur here. The
+ * a URL signed with a short-lived JWT (PR #5628) can't recur here. The
  * provider also runs the `_whoowns` preflight (fly edge affinity + the only
  * place a browser client can observe the upgrade's real HTTP status).
  */

@@ -34,7 +34,10 @@ import {
 	resolveSessionOrganizationState,
 	type SessionOrganizationContext,
 } from "./lib/resolve-session-organization-state";
-import { getAuthSecurityPolicy } from "./lib/security-policy";
+import {
+	canAutoEnrollByDomain,
+	getAuthSecurityPolicy,
+} from "./lib/security-policy";
 import { stripeClient } from "./stripe";
 import { formatPrice, getOrganizationOwners } from "./utils";
 
@@ -42,6 +45,9 @@ const qstash = new Client({ token: env.QSTASH_TOKEN });
 const localMode = isSupersetLocalMode(process.env);
 const authSecurityPolicy = getAuthSecurityPolicy(
 	process.env.SUPERSET_HIPAA_MODE === "true",
+	{
+		allowBootstrapSignUp: process.env.SUPERSET_AUTH_BOOTSTRAP_SIGNUP === "true",
+	},
 );
 
 const userOptions = {
@@ -111,6 +117,7 @@ export const auth = betterAuth({
 	session: {
 		expiresIn: authSecurityPolicy.sessionExpiresIn,
 		updateAge: authSecurityPolicy.sessionUpdateAge,
+		disableSessionRefresh: authSecurityPolicy.disableSessionRefresh,
 		storeSessionInDatabase: true,
 		cookieCache: authSecurityPolicy.cookieCache,
 	},
@@ -130,16 +137,19 @@ export const auth = betterAuth({
 			process.env.NODE_ENV === "development" ||
 			process.env.VERCEL_ENV === "preview",
 		autoSignIn: true,
+		disableSignUp: authSecurityPolicy.disablePublicSignUp,
 		minPasswordLength: authSecurityPolicy.minimumPasswordLength,
 	},
 	socialProviders: {
 		github: {
 			clientId: env.GH_CLIENT_ID,
 			clientSecret: env.GH_CLIENT_SECRET,
+			disableSignUp: authSecurityPolicy.disablePublicSignUp,
 		},
 		google: {
 			clientId: env.GOOGLE_CLIENT_ID,
 			clientSecret: env.GOOGLE_CLIENT_SECRET,
+			disableSignUp: authSecurityPolicy.disablePublicSignUp,
 		},
 	},
 	databaseHooks: {
@@ -149,7 +159,13 @@ export const auth = betterAuth({
 					const domain = user.email.split("@")[1]?.toLowerCase();
 					let enrolledOrgId: string | null = null;
 
-					if (domain) {
+					if (
+						domain &&
+						canAutoEnrollByDomain({
+							emailVerified: user.emailVerified,
+							policy: authSecurityPolicy,
+						})
+					) {
 						const matchingOrgs = await db.query.organizations.findMany({
 							where: sql`${authSchema.organizations.allowedDomains} @> ARRAY[${domain}]::text[]`,
 						});
@@ -220,9 +236,10 @@ export const auth = betterAuth({
 			jwt: {
 				issuer: env.NEXT_PUBLIC_API_URL,
 				audience: env.NEXT_PUBLIC_API_URL,
-				expirationTime: "1h",
+				expirationTime: authSecurityPolicy.jwtExpirationTime,
 				definePayload: async ({
 					user,
+					session,
 				}: {
 					user: { id: string; email: string };
 					session: Record<string, unknown>;
@@ -234,7 +251,12 @@ export const auth = betterAuth({
 					const organizationIds = [
 						...new Set(userMemberships.map((m) => m.organizationId)),
 					];
-					return { sub: user.id, email: user.email, organizationIds };
+					return {
+						sub: user.id,
+						email: user.email,
+						organizationIds,
+						...(typeof session.id === "string" ? { sid: session.id } : {}),
+					};
 				},
 			},
 		}),
@@ -243,7 +265,7 @@ export const auth = betterAuth({
 			consentPage: `${env.NEXT_PUBLIC_WEB_URL}/oauth/consent`,
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: true,
-			accessTokenExpiresIn: 60 * 60 * 24 * 7,
+			accessTokenExpiresIn: authSecurityPolicy.oauthAccessTokenExpiresIn,
 			validAudiences: [
 				env.NEXT_PUBLIC_API_URL,
 				`${env.NEXT_PUBLIC_API_URL}/`,

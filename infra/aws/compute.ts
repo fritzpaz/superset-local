@@ -1,7 +1,13 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import type { DeploymentConfig } from "./config";
+import {
+	APPLICATION_SECRET_KEYS,
+	type ApplicationSecretKey,
+	CONTAINER_SECRET_KEYS,
+} from "./container-secrets";
 import type { DataLayer } from "./data";
+import { buildCloudWatchLogsKeyPolicy } from "./logging-key-policy";
 import type { Network } from "./network";
 
 interface ComputeLayer {
@@ -87,11 +93,26 @@ export function createComputeLayer(
 	if (!region) throw new Error("aws:region must be configured");
 	const publicOrigin = `https://${config.domainName}`;
 	const alarmActions = config.alarmTopicArn ? [config.alarmTopicArn] : [];
+	const executionRole = new aws.iam.Role(`${name}-execution-role`, {
+		assumeRolePolicy,
+	});
+	const logGroupArns = ["application", "electric", "migration"].map(
+		(suffix) =>
+			`arn:aws:logs:${region}:${config.awsAccountId}:log-group:/superset/${name}/${suffix}`,
+	);
 
 	const logKey = new aws.kms.Key(`${name}-logs-key`, {
 		description: "Superset CloudWatch log encryption",
 		enableKeyRotation: true,
 		deletionWindowInDays: 30,
+		policy: executionRole.arn.apply((callerArn) =>
+			buildCloudWatchLogsKeyPolicy({
+				accountId: config.awsAccountId,
+				callerArns: [callerArn],
+				logGroupArns,
+				region,
+			}),
+		),
 	});
 	const appLogGroup = new aws.cloudwatch.LogGroup(`${name}-app-logs`, {
 		kmsKeyId: logKey.arn,
@@ -115,9 +136,6 @@ export function createComputeLayer(
 		},
 	);
 
-	const executionRole = new aws.iam.Role(`${name}-execution-role`, {
-		assumeRolePolicy,
-	});
 	new aws.iam.RolePolicyAttachment(`${name}-execution-policy`, {
 		policyArn:
 			"arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
@@ -185,42 +203,51 @@ export function createComputeLayer(
 			},
 		],
 	});
-	new aws.s3.BucketPolicy(`${name}-access-log-policy`, {
-		bucket: logBucket.id,
-		policy: logBucket.arn.apply((bucketArn) =>
-			JSON.stringify({
-				Version: "2012-10-17",
-				Statement: [
-					{
-						Action: "s3:PutObject",
-						Effect: "Allow",
-						Principal: {
-							Service: "logdelivery.elasticloadbalancing.amazonaws.com",
-						},
-						Condition: {
-							StringEquals: { "aws:SourceAccount": config.awsAccountId },
-							ArnLike: {
-								"aws:SourceArn": `arn:aws:elasticloadbalancing:${region}:${config.awsAccountId}:loadbalancer/app/*`,
+	const accessLogBucketPolicy = new aws.s3.BucketPolicy(
+		`${name}-access-log-policy`,
+		{
+			bucket: logBucket.id,
+			policy: logBucket.arn.apply((bucketArn) =>
+				JSON.stringify({
+					Version: "2012-10-17",
+					Statement: [
+						{
+							Action: "s3:PutObject",
+							Effect: "Allow",
+							Principal: {
+								Service: "logdelivery.elasticloadbalancing.amazonaws.com",
 							},
+							Condition: {
+								StringEquals: {
+									"aws:SourceAccount": config.awsAccountId,
+								},
+								ArnLike: {
+									"aws:SourceArn": `arn:aws:elasticloadbalancing:${region}:${config.awsAccountId}:loadbalancer/app/*`,
+								},
+							},
+							Resource: `${bucketArn}/AWSLogs/${config.awsAccountId}/*`,
 						},
-						Resource: `${bucketArn}/AWSLogs/${config.awsAccountId}/*`,
-					},
-				],
-			}),
-		),
-	});
+					],
+				}),
+			),
+		},
+	);
 
-	const alb = new aws.lb.LoadBalancer(`${name}-alb`, {
-		accessLogs: { bucket: logBucket.bucket, enabled: true },
-		dropInvalidHeaderFields: true,
-		enableDeletionProtection: true,
-		enableHttp2: true,
-		idleTimeout: 300,
-		internal: false,
-		loadBalancerType: "application",
-		securityGroups: [network.albSecurityGroupId],
-		subnets: network.publicSubnetIds,
-	});
+	const alb = new aws.lb.LoadBalancer(
+		`${name}-alb`,
+		{
+			accessLogs: { bucket: logBucket.bucket, enabled: true },
+			dropInvalidHeaderFields: true,
+			enableDeletionProtection: true,
+			enableHttp2: true,
+			idleTimeout: 300,
+			internal: false,
+			loadBalancerType: "application",
+			securityGroups: [network.albSecurityGroupId],
+			subnets: network.publicSubnetIds,
+		},
+		{ dependsOn: [logBucket, accessLogBucketPolicy] },
+	);
 	const targetGroup = (suffix: string, port: number, healthPath: string) =>
 		new aws.lb.TargetGroup(`${name}-${suffix}-tg`, {
 			name: `${name.slice(0, 20)}-${suffix.slice(0, 10)}`,
@@ -311,15 +338,6 @@ export function createComputeLayer(
 
 	const secret = (key: string) =>
 		pulumi.interpolate`${data.credentialsSecret.arn}:${key}::`;
-	const applicationSecretKeys = [
-		"BETTER_AUTH_SECRET",
-		"DATABASE_URL",
-		"DATABASE_URL_UNPOOLED",
-		"ELECTRIC_SECRET",
-		"KV_REST_API_TOKEN",
-		"KV_URL",
-		"SECRETS_ENCRYPTION_KEY",
-	] as const;
 	const commonEnvironment = [
 		{ name: "NODE_ENV", value: "production" },
 		{ name: "SUPERSET_LOCAL_MODE", value: "true" },
@@ -344,8 +362,16 @@ export function createComputeLayer(
 		{ name: "NEXT_PUBLIC_COOKIE_DOMAIN", value: config.domainName },
 		{ name: "SUPERSET_INTERNAL_API_URL", value: "http://127.0.0.1:3001" },
 		{ name: "KV_REST_API_URL", value: "http://127.0.0.1:80" },
-		{ name: "AUTH_URL", value: "http://127.0.0.1:3001" },
-		{ name: "ELECTRIC_ALLOWED_ORIGIN", value: publicOrigin },
+		{
+			name: "AUTH_JWKS_URL",
+			value: "http://127.0.0.1:3001/api/auth/jwks",
+		},
+		{ name: "AUTH_JWT_AUDIENCE", value: publicOrigin },
+		{ name: "AUTH_JWT_ISSUER", value: publicOrigin },
+		{
+			name: "ELECTRIC_ALLOWED_ORIGIN",
+			value: `${publicOrigin},superset-app://renderer`,
+		},
 		{
 			name: "ELECTRIC_SHAPE_URL",
 			value: `http://electric.${name}.internal:3000/v1/shape`,
@@ -395,29 +421,34 @@ export function createComputeLayer(
 	const appDefinitions = pulumi
 		.all([
 			appLogGroup.name,
-			data.credentialsSecret.arn,
-			...applicationSecretKeys.map(secret),
+			...APPLICATION_SECRET_KEYS.map(secret),
 			secret("REDIS_URL"),
 		])
-		.apply(([logGroupName, secretArn, ...secretValues]) => {
-			const appSecrets = applicationSecretKeys.map((key, index) => ({
-				name: key,
-				valueFrom: requiredValue(secretValues[index], key),
-			}));
+		.apply(([logGroupName, ...secretValues]) => {
+			const secretValuesByKey = Object.fromEntries(
+				APPLICATION_SECRET_KEYS.map((key, index) => [
+					key,
+					requiredValue(secretValues[index], key),
+				]),
+			) as Record<ApplicationSecretKey, string>;
+			const secretsFor = (
+				keys: readonly ApplicationSecretKey[],
+			): ContainerDefinition["secrets"] =>
+				keys.map((key) => ({ name: key, valueFrom: secretValuesByKey[key] }));
 			const redisUrl = requiredValue(
-				secretValues[applicationSecretKeys.length],
+				secretValues[APPLICATION_SECRET_KEYS.length],
 				"REDIS_URL",
 			);
 			const resolvedLogGroupName = requiredValue(
 				logGroupName,
 				"application log group",
 			);
-			const resolvedSecretArn = requiredValue(secretArn, "runtime secret ARN");
 			const appContainer = (
 				containerName: string,
 				port: number,
 				command: string[],
 				healthUrl: string,
+				containerSecrets: ContainerDefinition["secrets"],
 			): ContainerDefinition => ({
 				command,
 				cpu: containerName === "electric-proxy" ? 128 : 256,
@@ -451,7 +482,7 @@ export function createComputeLayer(
 					},
 				],
 				readonlyRootFilesystem: false,
-				secrets: appSecrets,
+				secrets: containerSecrets,
 				user: "1000:1000",
 			});
 
@@ -461,18 +492,21 @@ export function createComputeLayer(
 					3001,
 					["bun", "run", "--cwd", "apps/api", "start"],
 					"http://127.0.0.1:3001/api/auth/get-session",
+					secretsFor(CONTAINER_SECRET_KEYS.api),
 				),
 				appContainer(
 					"web",
 					3000,
 					["bun", "run", "--cwd", "apps/web", "start"],
 					"http://127.0.0.1:3000/sign-in",
+					secretsFor(CONTAINER_SECRET_KEYS.web),
 				),
 				appContainer(
 					"electric-proxy",
 					8787,
 					["bun", "run", "--cwd", "apps/electric-proxy", "start:server"],
 					"http://127.0.0.1:8787/_health",
+					secretsFor(CONTAINER_SECRET_KEYS["electric-proxy"]),
 				),
 				{
 					cpu: 128,
@@ -499,7 +533,7 @@ export function createComputeLayer(
 						{ name: "SRH_CONNECTION_STRING", valueFrom: redisUrl },
 						{
 							name: "SRH_TOKEN",
-							valueFrom: `${resolvedSecretArn}:KV_REST_API_TOKEN::`,
+							valueFrom: secretValuesByKey.KV_REST_API_TOKEN,
 						},
 					],
 				} satisfies ContainerDefinition,
@@ -627,7 +661,7 @@ export function createComputeLayer(
 	const migrationDefinitions = pulumi
 		.all([
 			migrationLogGroup.name,
-			...applicationSecretKeys.map(secret),
+			...CONTAINER_SECRET_KEYS.migration.map(secret),
 			secret("SUP_LOCAL_ADMIN_PASSWORD"),
 		])
 		.apply(([logGroupName, ...secretValues]) => {
@@ -653,14 +687,14 @@ export function createComputeLayer(
 					name: "migration",
 					readonlyRootFilesystem: false,
 					secrets: [
-						...applicationSecretKeys.map((key, index) => ({
+						...CONTAINER_SECRET_KEYS.migration.map((key, index) => ({
 							name: key,
 							valueFrom: requiredValue(secretValues[index], key),
 						})),
 						{
 							name: "SUP_LOCAL_ADMIN_PASSWORD",
 							valueFrom: requiredValue(
-								secretValues[applicationSecretKeys.length],
+								secretValues[CONTAINER_SECRET_KEYS.migration.length],
 								"SUP_LOCAL_ADMIN_PASSWORD",
 							),
 						},
@@ -700,26 +734,63 @@ export function createComputeLayer(
 		threshold: 5 * 1024 * 1024 * 1024,
 		treatMissingData: "breaching",
 	});
-	new aws.cloudwatch.MetricAlarm(`${name}-unhealthy-target-alarm`, {
-		alarmActions,
-		alarmDescription: "One or more application targets are unhealthy",
-		comparisonOperator: "GreaterThanThreshold",
-		dimensions: {
-			LoadBalancer: alb.arnSuffix,
-			TargetGroup: webTarget.arnSuffix,
+	const monitoredTargetGroups = [
+		{ label: "web", resourceSuffix: "web", targetGroup: webTarget },
+		{ label: "api", resourceSuffix: "api", targetGroup: apiTarget },
+		{
+			label: "electric proxy",
+			resourceSuffix: "electric-proxy",
+			targetGroup: proxyTarget,
 		},
-		evaluationPeriods: 2,
-		metricName: "UnHealthyHostCount",
-		namespace: "AWS/ApplicationELB",
-		period: 60,
-		statistic: "Maximum",
-		threshold: 0,
-		treatMissingData: "breaching",
-	});
+	] as const;
+	for (const { label, resourceSuffix, targetGroup } of monitoredTargetGroups) {
+		new aws.cloudwatch.MetricAlarm(
+			`${name}-${resourceSuffix}-unhealthy-target-alarm`,
+			{
+				alarmActions,
+				alarmDescription: `One or more ${label} targets are unhealthy`,
+				comparisonOperator: "GreaterThanThreshold",
+				datapointsToAlarm: 2,
+				dimensions: {
+					LoadBalancer: alb.arnSuffix,
+					TargetGroup: targetGroup.arnSuffix,
+				},
+				evaluationPeriods: 2,
+				metricName: "UnHealthyHostCount",
+				namespace: "AWS/ApplicationELB",
+				period: 60,
+				statistic: "Maximum",
+				threshold: 0,
+				treatMissingData: "breaching",
+			},
+		);
+		new aws.cloudwatch.MetricAlarm(
+			`${name}-${resourceSuffix}-target-5xx-alarm`,
+			{
+				alarmActions,
+				alarmDescription: `${label} targets are returning 5xx responses`,
+				comparisonOperator: "GreaterThanThreshold",
+				datapointsToAlarm: 2,
+				dimensions: {
+					LoadBalancer: alb.arnSuffix,
+					TargetGroup: targetGroup.arnSuffix,
+				},
+				evaluationPeriods: 2,
+				metricName: "HTTPCode_Target_5XX_Count",
+				namespace: "AWS/ApplicationELB",
+				period: 60,
+				statistic: "Sum",
+				threshold: 5,
+				treatMissingData: "notBreaching",
+			},
+		);
+	}
 	new aws.cloudwatch.MetricAlarm(`${name}-alb-5xx-alarm`, {
 		alarmActions,
-		alarmDescription: "Application load balancer is returning 5xx responses",
+		alarmDescription:
+			"Application load balancer is generating 5xx responses before reaching a target",
 		comparisonOperator: "GreaterThanThreshold",
+		datapointsToAlarm: 2,
 		dimensions: { LoadBalancer: alb.arnSuffix },
 		evaluationPeriods: 2,
 		metricName: "HTTPCode_ELB_5XX_Count",
@@ -729,6 +800,26 @@ export function createComputeLayer(
 		threshold: 5,
 		treatMissingData: "notBreaching",
 	});
+	new aws.cloudwatch.MetricAlarm(
+		`${name}-electric-service-availability-alarm`,
+		{
+			alarmActions,
+			alarmDescription: "The Electric ECS service has no running task",
+			comparisonOperator: "LessThanThreshold",
+			datapointsToAlarm: 2,
+			dimensions: {
+				ClusterName: cluster.name,
+				ServiceName: electricService.name,
+			},
+			evaluationPeriods: 2,
+			metricName: "RunningTaskCount",
+			namespace: "ECS/ContainerInsights",
+			period: 60,
+			statistic: "Minimum",
+			threshold: 1,
+			treatMissingData: "breaching",
+		},
+	);
 
 	return { alb, cluster, migrationTaskDefinition };
 }

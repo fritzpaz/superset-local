@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { authClient, setAuthToken, setJwt } from "renderer/lib/auth-client";
+import { getJwtRefreshDelayMs } from "renderer/lib/jwt-expiry";
 import { SupersetLogo } from "renderer/routes/sign-in/components/SupersetLogo/SupersetLogo";
 import { electronTrpc } from "../../lib/electron-trpc";
 
@@ -88,21 +89,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (!isHydrated) return;
 
-		const refreshJwt = () =>
-			authClient
-				.token()
-				.then((res) => {
-					if (res.data?.token) {
-						setJwt(res.data.token);
-					}
-				})
-				.catch((err: unknown) => {
-					console.warn("[AuthProvider] JWT refresh failed", err);
-				});
+		let cancelled = false;
+		let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
-		refreshJwt();
-		const interval = setInterval(refreshJwt, 50 * 60 * 1000);
-		return () => clearInterval(interval);
+		const refreshJwt = async () => {
+			let nextDelayMs = 60_000;
+			try {
+				const res = await authClient.token();
+				if (res.data?.token) {
+					setJwt(res.data.token);
+					nextDelayMs = getJwtRefreshDelayMs(
+						res.data.token,
+						Date.now(),
+						50 * 60_000,
+					);
+				}
+			} catch (err) {
+				console.warn("[AuthProvider] JWT refresh failed", err);
+			}
+			if (!cancelled) refreshTimer = setTimeout(refreshJwt, nextDelayMs);
+		};
+
+		void refreshJwt();
+		return () => {
+			cancelled = true;
+			if (refreshTimer) clearTimeout(refreshTimer);
+		};
 	}, [isHydrated]);
 
 	if (!isHydrated) {

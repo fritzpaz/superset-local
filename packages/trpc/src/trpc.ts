@@ -1,11 +1,12 @@
 import type { auth, Session } from "@superset/auth/server";
 import { db } from "@superset/db/client";
-import { members } from "@superset/db/schema";
+import { sessions as authSessions, members } from "@superset/db/schema";
 import { COMPANY, ORGANIZATION_HEADER } from "@superset/shared/constants";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { resolveJwtAuthorization } from "./lib/resolve-jwt-authorization";
 
 export type TRPCContext = {
 	session: Session | null;
@@ -79,14 +80,42 @@ export const jwtProcedure = t.procedure.use(async ({ ctx, next }) => {
 			const { payload } = await ctx.auth.api.verifyJWT({
 				body: { token: bearer },
 			});
-			if (payload?.sub) {
-				const organizationIds = (payload.organizationIds as string[]) ?? [];
+			if (payload) {
+				const authorization = await resolveJwtAuthorization(
+					payload as Record<string, unknown>,
+					{
+						requireLiveState: process.env.SUPERSET_HIPAA_MODE === "true",
+						dependencies: {
+							findLiveOrganizationIds: async (userId) => {
+								const memberRows = await db.query.members.findMany({
+									where: eq(members.userId, userId),
+									columns: { organizationId: true },
+								});
+								return memberRows.map((row) => row.organizationId);
+							},
+							isSessionActive: async (sessionId, userId) => {
+								const session = await db.query.sessions.findFirst({
+									where: and(
+										eq(authSessions.id, sessionId),
+										eq(authSessions.userId, userId),
+										gt(authSessions.expiresAt, new Date()),
+									),
+									columns: { id: true },
+								});
+								return Boolean(session);
+							},
+						},
+					},
+				);
+				if (!authorization) {
+					throw new TRPCError({
+						code: "UNAUTHORIZED",
+						message: "Bearer token session is no longer active.",
+					});
+				}
 				return next({
 					ctx: {
-						userId: payload.sub,
-						email: (payload.email as string) ?? "",
-						organizationIds,
-						activeOrganizationId: organizationIds[0] ?? null,
+						...authorization,
 					},
 				});
 			}
