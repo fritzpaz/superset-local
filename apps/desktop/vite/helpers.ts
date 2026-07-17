@@ -73,7 +73,7 @@ export function htmlEnvTransformPlugin(): Plugin {
 	return {
 		name: "html-env-transform",
 		transformIndexHtml(html) {
-			return html
+			const transformed = html
 				.replace(
 					/%NEXT_PUBLIC_API_URL%/g,
 					process.env.NEXT_PUBLIC_API_URL || "https://api.superset.sh",
@@ -93,6 +93,11 @@ export function htmlEnvTransformPlugin(): Plugin {
 					/%RELAY_URL%/g,
 					process.env.RELAY_URL || "https://relay.superset.sh",
 				);
+			if (process.env.SUPERSET_LOCAL_MODE !== "true") return transformed;
+			return transformed
+				.replaceAll("https://relay-backup.superset.sh", "")
+				.replaceAll("https://*.posthog.com", "")
+				.replaceAll("https://*.sentry.io", "");
 		},
 	};
 }

@@ -1,0 +1,230 @@
+{
+	"version": 1,
+	"findings": [
+		{
+			"file": "apps/api/src/app/api/integrations/slack/events/process-app-home-opened/build-home-view.ts",
+			"fingerprint": "efc9ae397418ecf68062db5c7638bbb78a3f704896c3b4a2f2cfcf3d29dae912",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/api/src/app/api/integrations/slack/events/process-assistant-message/process-assistant-message.ts",
+			"fingerprint": "f9ff46f277aac5d516be9b939f79607c51a9ea3f9f9ef4b5f3492604da2de762",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/api/src/app/api/integrations/slack/events/process-mention/process-mention.ts",
+			"fingerprint": "af7349e8cfb0b877c51f8cb44b20bbaee548e0829d0ee0eafb1d61feaba44f13",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "e949bae8986af33212649f4285712b54d0faa7599fa518304fb77f0dddce79d7",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "93157ccabeef37e13b0b41ccf504b27284319d5a60b6af09fe8c593ed425db05",
+			"hosts": ["https://streams.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "7cc29d8cb8612bf570fe96640134e35b39b24b336986420d610f9a5ab6b93f2d",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "c9b3661f890b733c7f41d5f94ebcb6fa5b2c00a42ea523af98c1d901005f5e6b",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "3f814b49be4df362b79533167cefef10a589f4292ddc5708852657e5d2064644",
+			"hosts": ["https://docs.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "e949bae8986af33212649f4285712b54d0faa7599fa518304fb77f0dddce79d7",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "7cc29d8cb8612bf570fe96640134e35b39b24b336986420d610f9a5ab6b93f2d",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "c9b3661f890b733c7f41d5f94ebcb6fa5b2c00a42ea523af98c1d901005f5e6b",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "apps/desktop/electron.vite.config.ts",
+			"fingerprint": "3f814b49be4df362b79533167cefef10a589f4292ddc5708852657e5d2064644",
+			"hosts": ["https://docs.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/main/env.main.ts",
+			"fingerprint": "c74d4c8f840babe730af3eb6c6eff7065d283ddcc9ff783af18ed55b612be2a4",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/main/env.main.ts",
+			"fingerprint": "d1919beaf9ac28c7399bbd7ddfc4e0b3c097edbeb68765ebdad75387a8973ac3",
+			"hosts": ["https://streams.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/main/env.main.ts",
+			"fingerprint": "470ed48ae60e8162ca387d7bd086b8268b5daa26bd41b243e6cc0f5c3fed0a5d",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/main/env.main.ts",
+			"fingerprint": "a5bcd1a5f243dc24a46d0c8ca298c9f575dc2b48e4d5861a5d39353583c74a20",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/main/env.main.ts",
+			"fingerprint": "8e112ac0ee701779579ef49ef4f7bb522d420ff88e936e68f15dad06a9a7c208",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/renderer/env.renderer.ts",
+			"fingerprint": "b5250d8de3fd044687da335159438c1856f076c387a6784ded6e8437aadf5a9f",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/renderer/env.renderer.ts",
+			"fingerprint": "24bd6bd79acc05e60d75710dbbdb4c7e2421431e0c346622573501547eec92b6",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/renderer/env.renderer.ts",
+			"fingerprint": "4b6e5ceb2081773846a92bf9505a46ea4627775dc6ba57d7d920477668cae962",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/renderer/env.renderer.ts",
+			"fingerprint": "31a089067d72d845f077592afafeaa03ec50aaf840833e64614525a443ba2451",
+			"hosts": ["https://docs.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/src/renderer/env.renderer.ts",
+			"fingerprint": "f2e485f6dc5e5da7c25393252db7da7a2040ca9843e6c31d07e73fe28a3a6e88",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/vite/helpers.ts",
+			"fingerprint": "2d385a2a558e1053688ec3f2b815e420b78b0cf2ff97445e11481f0721e3bc6a",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/vite/helpers.ts",
+			"fingerprint": "ffcc8ab5eaf9f2848eb92d642861e620233b689fd518ec082d00b0f0c089641f",
+			"hosts": ["https://streams.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/vite/helpers.ts",
+			"fingerprint": "bb80b6bd410d5d47a2af9331941f326adcf264c88ebe72f44c41758e0042085f",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "apps/desktop/vite/helpers.ts",
+			"fingerprint": "a3f37f53dd407a62a5bf1142d417ae10297ad6e4dde7988b388c86b5852a4bea",
+			"hosts": ["https://relay-backup.superset.sh"]
+		},
+		{
+			"file": "apps/web/next.config.ts",
+			"fingerprint": "c8db92e57fef4391d8293e7ac4341582fb6ce58173ead75cb391db627dcce70f",
+			"hosts": ["wss://relay.superset.sh"]
+		},
+		{
+			"file": "apps/web/next.config.ts",
+			"fingerprint": "a33a53e7fef398d5e837006f733a2718ccc4f9edff7f99d67ed0b4625516df08",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "apps/web/next.config.ts",
+			"fingerprint": "1f442d6d9daef84a59b715a40a1628cb5674084d52e63f89f78549da274684a3",
+			"hosts": ["wss://relay-backup.superset.sh"]
+		},
+		{
+			"file": "apps/web/next.config.ts",
+			"fingerprint": "99db99a3deea4b7240c7a5dd7f5224bfd1d8ff241f4fe01bd9b9986d18b6a217",
+			"hosts": ["https://relay-backup.superset.sh"]
+		},
+		{
+			"file": "packages/cli/src/lib/env.ts",
+			"fingerprint": "3164efca6a5db9d57828386c515aa606437916f0d79013e489454ea2e91f5023",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "packages/cli/src/lib/env.ts",
+			"fingerprint": "b361af1f0bd97d2e1876ae481f518b73cce32a6bdbf3d5d3166eb705a278b160",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "packages/cli/src/lib/env.ts",
+			"fingerprint": "1d3a1818a694ae0e3810861fcd8e442bd11da8a084d36e55dba6cd893b5472d7",
+			"hosts": ["https://app.superset.sh"]
+		},
+		{
+			"file": "packages/sdk/src/client.ts",
+			"fingerprint": "c4dc327e495718c9d1e4c1436122d8a91e519554fdff6145c03eed1cc1f501d5",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "packages/sdk/src/client.ts",
+			"fingerprint": "ff87bfb72fa4af17e686554f49ccc6302f42a9092275e2c2141f4f28c0512166",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "packages/sdk/src/client.ts",
+			"fingerprint": "1b6d7a36f598d383f3a8239349703ddd66975ef891d56d9146bc0752a080c254",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "packages/sdk/src/client.ts",
+			"fingerprint": "176dda9c852218515208027a28b9fa13923af919a92bb423e8003e28fe8eeb46",
+			"hosts": ["https://relay.superset.sh"]
+		},
+		{
+			"file": "packages/sdk/src/client.ts",
+			"fingerprint": "edd24f649fc6a1a6d6e120ef4f37c75367b2c9f94f0d1aade2655cae7b5ca4e0",
+			"hosts": ["https://api.superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "5b1a231719e3cfa5630a481732d8f6959db84b1fb371f9fc5464229de8c97db5",
+			"hosts": ["https://docs.superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "5b718e1ee4f2d7069a4675b80100a1940a0fa0ade17656c29f1cec8bba4b2360",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "282b968fe71af0f62096b6735d91d37714ee2ee7929b33f2174b587c5b372b6f",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "72675c596786a70aaf11ab557c1151588f030012a986dc617272f49ca7184326",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "72675c596786a70aaf11ab557c1151588f030012a986dc617272f49ca7184326",
+			"hosts": ["https://superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "f4be4db0e33ca80f94883f57b206cc382294539e80946634bbfb3e1be34a0aac",
+			"hosts": ["https://status.superset.sh"]
+		},
+		{
+			"file": "packages/shared/src/constants.ts",
+			"fingerprint": "b24af2e872a23d238a7bd0094a8ff5171a7bdfc150a1c995ccc8d919191923a7",
+			"hosts": ["https://trust.superset.sh"]
+		}
+	]
+}

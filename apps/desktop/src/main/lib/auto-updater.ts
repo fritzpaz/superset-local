@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { localFeatureDisabled } from "@superset/shared/local-runtime";
 import { app, dialog } from "electron";
 import log from "electron-log/main";
 import { autoUpdater } from "electron-updater";
@@ -293,6 +294,10 @@ export function simulateError(): void {
 }
 
 export function setupAutoUpdater(): void {
+	if (localFeatureDisabled(process.env, "AUTO_UPDATE")) {
+		log.info("[auto-updater] Disabled by Superset Local runtime policy");
+		return;
+	}
 	if (env.NODE_ENV === "development" || !IS_AUTO_UPDATE_PLATFORM) {
 		return;
 	}

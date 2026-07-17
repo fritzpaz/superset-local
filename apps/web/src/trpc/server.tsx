@@ -16,7 +16,7 @@ export const api = cache(async () => {
 		links: [
 			httpBatchLink({
 				transformer: SuperJSON,
-				url: `${env.NEXT_PUBLIC_API_URL}/api/trpc`,
+				url: `${env.SUPERSET_INTERNAL_API_URL ?? env.NEXT_PUBLIC_API_URL}/api/trpc`,
 				headers() {
 					return Object.fromEntries(heads.entries());
 				},

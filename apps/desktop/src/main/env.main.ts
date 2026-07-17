@@ -6,11 +6,13 @@
  *
  * For renderer process env vars, use src/renderer/env.renderer.ts instead.
  */
+
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod/v4";
 
 export const env = createEnv({
 	server: {
+		SUPERSET_LOCAL_MODE: z.string().optional(),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),
@@ -33,6 +35,7 @@ export const env = createEnv({
 		// Explicitly list env vars so Vite can replace them at build time
 		// (spreading process.env only works at runtime, not for bundled apps)
 		NODE_ENV: process.env.NODE_ENV,
+		SUPERSET_LOCAL_MODE: process.env.SUPERSET_LOCAL_MODE,
 		NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
 		NEXT_PUBLIC_STREAMS_URL: process.env.NEXT_PUBLIC_STREAMS_URL,
 		NEXT_PUBLIC_ELECTRIC_URL: process.env.NEXT_PUBLIC_ELECTRIC_URL,
@@ -52,3 +55,16 @@ export const env = createEnv({
 	// Main process runs in trusted Node.js environment
 	isServer: true,
 });
+
+if (env.SUPERSET_LOCAL_MODE === "true") {
+	for (const [label, value] of [
+		["NEXT_PUBLIC_API_URL", env.NEXT_PUBLIC_API_URL],
+		["NEXT_PUBLIC_WEB_URL", env.NEXT_PUBLIC_WEB_URL],
+		["NEXT_PUBLIC_ELECTRIC_URL", env.NEXT_PUBLIC_ELECTRIC_URL],
+	] as const) {
+		const hostname = new URL(value).hostname.toLowerCase();
+		if (hostname === "superset.sh" || hostname.endsWith(".superset.sh")) {
+			throw new Error(`${label} cannot use a Superset-operated endpoint`);
+		}
+	}
+}

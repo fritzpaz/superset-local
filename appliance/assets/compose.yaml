@@ -1,0 +1,171 @@
+name: superset-local
+
+services:
+  postgres:
+    profiles: [local]
+    image: ${SUP_LOCAL_POSTGRES_IMAGE:-postgres:17.4-alpine}
+    command: [postgres, -c, wal_level=logical, -c, max_wal_senders=10, -c, max_replication_slots=10]
+    environment:
+      POSTGRES_USER: ${SUP_LOCAL_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${SUP_LOCAL_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${SUP_LOCAL_POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    profiles: [local]
+    image: ${SUP_LOCAL_REDIS_IMAGE:-redis:7.4.2-alpine}
+    command: [sh, -c, "exec redis-server --appendonly yes --requirepass \"$${SUP_LOCAL_REDIS_PASSWORD}\""]
+    environment:
+      SUP_LOCAL_REDIS_PASSWORD: ${SUP_LOCAL_REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD-SHELL, "redis-cli -a \"$${SUP_LOCAL_REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  neon-proxy:
+    profiles: [local]
+    image: ${SUP_LOCAL_NEON_PROXY_IMAGE:-ghcr.io/timowilhelm/local-neon-http-proxy:main}
+    environment:
+      PG_CONNECTION_STRING: postgresql://${SUP_LOCAL_POSTGRES_USER}:${SUP_LOCAL_POSTGRES_PASSWORD}@postgres:5432/${SUP_LOCAL_POSTGRES_DB}
+    networks:
+      default:
+        aliases: [db.localtest.me]
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_NEON_PROXY_PORT:-4444}:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  electric:
+    profiles: [local]
+    image: ${SUP_LOCAL_ELECTRIC_IMAGE:-electricsql/electric:1.7.4}
+    environment:
+      DATABASE_URL: ${SUP_LOCAL_ELECTRIC_DATABASE_URL}
+      ELECTRIC_SECRET: ${SUP_LOCAL_ELECTRIC_SECRET}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_ELECTRIC_PORT:-3100}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  serverless-redis-http:
+    profiles: [application]
+    image: hiett/serverless-redis-http:latest
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${KV_REST_API_TOKEN}
+      SRH_CONNECTION_STRING: ${SUP_LOCAL_CONTAINER_REDIS_URL}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_SRH_PORT:-8079}:80"
+    restart: unless-stopped
+
+  migrate:
+    profiles: [application]
+    image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
+    build:
+      context: ${SUP_LOCAL_SOURCE_ROOT:-../..}
+      dockerfile: appliance/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
+        NEXT_PUBLIC_ELECTRIC_URL: http://127.0.0.1:${SUP_LOCAL_ELECTRIC_PROXY_PORT:-8787}
+    env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
+    environment:
+      DATABASE_URL: ${SUP_LOCAL_CONTAINER_DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${SUP_LOCAL_CONTAINER_DATABASE_URL_UNPOOLED}
+    volumes:
+      - ../scripts/container-init.sh:/opt/superset-local/appliance/scripts/container-init.sh:ro
+    command: [sh, appliance/scripts/container-init.sh]
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      neon-proxy:
+        condition: service_started
+        required: false
+    restart: "no"
+
+  api:
+    profiles: [application]
+    image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
+    env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
+    environment:
+      DATABASE_URL: ${SUP_LOCAL_CONTAINER_DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${SUP_LOCAL_CONTAINER_DATABASE_URL_UNPOOLED}
+      KV_REST_API_URL: ${SUP_LOCAL_CONTAINER_KV_REST_API_URL}
+      SUPERSET_INTERNAL_API_URL: http://api:3001
+      NEXT_PUBLIC_ELECTRIC_URL: http://127.0.0.1:${SUP_LOCAL_ELECTRIC_PROXY_PORT:-8787}
+      NEXT_PUBLIC_POSTHOG_KEY: phc_local_disabled
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_API_PORT:-3001}:3001"
+    command: [bun, run, --cwd, apps/api, start]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      serverless-redis-http:
+        condition: service_started
+    healthcheck:
+      test: [CMD, bun, -e, "fetch('http://127.0.0.1:3001/api/auth/get-session').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  electric-proxy:
+    profiles: [application]
+    image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
+    env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
+    environment:
+      AUTH_URL: http://api:3001/api/auth/jwks
+      ELECTRIC_SHAPE_URL: ${SUP_LOCAL_CONTAINER_ELECTRIC_URL}/v1/shape
+    command: [bun, run, --cwd, apps/electric-proxy, dev, --, --ip, 0.0.0.0]
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_ELECTRIC_PROXY_PORT:-8787}:8787"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    profiles: [application]
+    image: superset-local:${SUP_LOCAL_IMAGE_TAG:-dev}
+    env_file: ${SUP_LOCAL_RUNTIME_ENV_FILE:-../runtime.env}
+    environment:
+      DATABASE_URL: ${SUP_LOCAL_CONTAINER_DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${SUP_LOCAL_CONTAINER_DATABASE_URL_UNPOOLED}
+      KV_REST_API_URL: ${SUP_LOCAL_CONTAINER_KV_REST_API_URL}
+      NEXT_PUBLIC_ELECTRIC_URL: http://127.0.0.1:${SUP_LOCAL_ELECTRIC_PROXY_PORT:-8787}
+      NEXT_PUBLIC_POSTHOG_KEY: phc_local_disabled
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_WEB_PORT:-3000}:3000"
+    command: [bun, run, --cwd, apps/web, start]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, bun, -e, "fetch('http://127.0.0.1:3000/sign-in').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

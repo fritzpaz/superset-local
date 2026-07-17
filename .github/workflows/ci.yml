@@ -7,6 +7,27 @@ on:
     types: [opened, synchronize]
 
 jobs:
+  superset-local:
+    name: Superset Local appliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Test and audit appliance
+        run: |
+          npm --prefix appliance test
+          npm --prefix appliance run check
+          npm --prefix appliance run audit:endpoints
+          npm --prefix appliance run pack:check
+          shellcheck appliance/scripts/install.sh appliance/scripts/container-init.sh
+
+      - name: Validate generated local configuration
+        run: |
+          node appliance/bin/superset-local.js init --profile local --non-interactive --source-root "$GITHUB_WORKSPACE" --config "$RUNNER_TEMP/superset-local.json" --state-dir "$RUNNER_TEMP/state"
+          node appliance/bin/superset-local.js doctor --strict --config "$RUNNER_TEMP/superset-local.json"
+          docker compose -f appliance/assets/compose.yaml --env-file "$RUNNER_TEMP/state/runtime.env" --profile local --profile application config --quiet
+
   sherif:
     name: Sherif
     runs-on: ubuntu-latest

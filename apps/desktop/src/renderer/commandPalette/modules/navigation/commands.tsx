@@ -1,5 +1,6 @@
 import { BookOpenIcon, HistoryIcon, SettingsIcon } from "lucide-react";
 import { LuLayers } from "react-icons/lu";
+import { env } from "renderer/env.renderer";
 import type { Command, CommandProvider } from "../../core/types";
 import { RecentlyViewedFrame } from "../../ui/RecentlyViewed/RecentlyViewedFrame";
 import { WorkspaceListFrame } from "../../ui/WorkspaceList";
@@ -40,7 +41,7 @@ export const navigationProvider: CommandProvider = {
 				section: "navigation",
 				icon: BookOpenIcon,
 				run: () => {
-					window.open("https://docs.superset.sh", "_blank", "noreferrer");
+					window.open(env.NEXT_PUBLIC_DOCS_URL, "_blank", "noreferrer");
 				},
 			},
 		];

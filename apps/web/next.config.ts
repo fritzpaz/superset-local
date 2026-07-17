@@ -13,6 +13,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 const isProduction = process.env.NODE_ENV === "production";
+const isLocal = process.env.SUPERSET_LOCAL_MODE === "true";
 const apiOrigin = process.env.NEXT_PUBLIC_API_URL
 	? new URL(process.env.NEXT_PUBLIC_API_URL).origin
 	: null;
@@ -23,12 +24,12 @@ const apiOrigin = process.env.NEXT_PUBLIC_API_URL
 // correct even if RELAY_URL isn't plumbed into the build env.
 const relayWsOrigin = process.env.RELAY_URL
 	? new URL(process.env.RELAY_URL).origin.replace(/^http/, "ws")
-	: isProduction
+	: isProduction && !isLocal
 		? "wss://relay.superset.sh"
 		: null;
 const relayHttpOrigin = process.env.RELAY_URL
 	? new URL(process.env.RELAY_URL).origin
-	: isProduction
+	: isProduction && !isLocal
 		? "https://relay.superset.sh"
 		: null;
 
@@ -40,13 +41,13 @@ const contentSecurityPolicy = [
 		apiOrigin,
 		relayWsOrigin,
 		relayHttpOrigin,
-		"wss://relay-backup.superset.sh",
-		"https://relay-backup.superset.sh",
-		"https://*.ingest.sentry.io",
-		"https://*.sentry.io",
-		"https://us.i.posthog.com",
-		"https://us-assets.i.posthog.com",
-		"https://us.posthog.com",
+		!isLocal && "wss://relay-backup.superset.sh",
+		!isLocal && "https://relay-backup.superset.sh",
+		!isLocal && "https://*.ingest.sentry.io",
+		!isLocal && "https://*.sentry.io",
+		!isLocal && "https://us.i.posthog.com",
+		!isLocal && "https://us-assets.i.posthog.com",
+		!isLocal && "https://us.posthog.com",
 		!isProduction && "ws:",
 		!isProduction && "wss:",
 	]
@@ -109,6 +110,7 @@ const config: NextConfig = {
 	},
 
 	async rewrites() {
+		if (isLocal) return [];
 		return [
 			{
 				source: "/ingest/static/:path*",
@@ -137,13 +139,15 @@ const config: NextConfig = {
 	skipTrailingSlashRedirect: true,
 };
 
-export default withSentryConfig(config, {
-	org: "superset-sh",
-	project: "web",
-	silent: !process.env.CI,
-	authToken: process.env.SENTRY_AUTH_TOKEN,
-	widenClientFileUpload: true,
-	tunnelRoute: "/monitoring",
-	disableLogger: true,
-	automaticVercelMonitors: true,
-});
+export default isLocal
+	? config
+	: withSentryConfig(config, {
+			org: "superset-sh",
+			project: "web",
+			silent: !process.env.CI,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			widenClientFileUpload: true,
+			tunnelRoute: "/monitoring",
+			disableLogger: true,
+			automaticVercelMonitors: true,
+		});

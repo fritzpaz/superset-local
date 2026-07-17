@@ -9,15 +9,19 @@
  *
  * For main process env vars, use src/main/env.main.ts instead.
  */
+
+import { validateSupersetLocalEnvironment } from "@superset/shared/local-runtime";
 import { z } from "zod/v4";
 
 const envSchema = z.object({
+	SUPERSET_LOCAL_MODE: z.string().optional(),
 	NODE_ENV: z
 		.enum(["development", "production", "test"])
 		.default("development"),
 	NEXT_PUBLIC_API_URL: z.url().default("https://api.superset.sh"),
 	NEXT_PUBLIC_WEB_URL: z.url().default("https://app.superset.sh"),
 	NEXT_PUBLIC_MARKETING_URL: z.url().default("https://superset.sh"),
+	NEXT_PUBLIC_DOCS_URL: z.url().default("https://docs.superset.sh"),
 	NEXT_PUBLIC_ELECTRIC_URL: z
 		.url()
 		.default("https://electric-proxy.avi-6ac.workers.dev"),
@@ -36,9 +40,11 @@ const envSchema = z.object({
 const rawEnv = {
 	// These are replaced by Vite's define at build time
 	NODE_ENV: process.env.NODE_ENV,
+	SUPERSET_LOCAL_MODE: process.env.SUPERSET_LOCAL_MODE,
 	NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
 	NEXT_PUBLIC_WEB_URL: process.env.NEXT_PUBLIC_WEB_URL,
 	NEXT_PUBLIC_MARKETING_URL: process.env.NEXT_PUBLIC_MARKETING_URL,
+	NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
 	NEXT_PUBLIC_ELECTRIC_URL: process.env.NEXT_PUBLIC_ELECTRIC_URL,
 	NEXT_PUBLIC_POSTHOG_KEY: import.meta.env.NEXT_PUBLIC_POSTHOG_KEY as
 		| string
@@ -60,3 +66,5 @@ export const env = {
 		: envSchema.parse(rawEnv)),
 	SKIP_ENV_VALIDATION,
 };
+
+validateSupersetLocalEnvironment(env);

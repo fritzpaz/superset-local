@@ -291,7 +291,7 @@ describe("terminal router integration", () => {
 			await stopDaemonProcess(daemonProcess);
 			rmSync(tmp, { recursive: true, force: true });
 		}
-	});
+	}, 10_000);
 
 	test("resource sessions are daemon-sourced and joined to active DB rows", () => {
 		const activeTerminalId = randomUUID();

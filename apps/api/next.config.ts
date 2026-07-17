@@ -25,13 +25,15 @@ const config: NextConfig = {
 	},
 };
 
-export default withSentryConfig(config, {
-	org: "superset-sh",
-	project: "api",
-	silent: !process.env.CI,
-	authToken: process.env.SENTRY_AUTH_TOKEN,
-	widenClientFileUpload: true,
-	tunnelRoute: "/monitoring",
-	disableLogger: true,
-	automaticVercelMonitors: true,
-});
+export default process.env.SUPERSET_LOCAL_MODE === "true"
+	? config
+	: withSentryConfig(config, {
+			org: "superset-sh",
+			project: "api",
+			silent: !process.env.CI,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			widenClientFileUpload: true,
+			tunnelRoute: "/monitoring",
+			disableLogger: true,
+			automaticVercelMonitors: true,
+		});

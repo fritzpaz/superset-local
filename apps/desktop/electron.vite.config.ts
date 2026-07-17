@@ -48,6 +48,10 @@ export default defineConfig({
 		plugins: [tsconfigPaths, copyResourcesPlugin()],
 
 		define: {
+			"process.env.SUPERSET_LOCAL_MODE": defineEnv(
+				process.env.SUPERSET_LOCAL_MODE,
+				"false",
+			),
 			"process.env.NODE_ENV": defineEnv(process.env.NODE_ENV, "production"),
 			"process.env.SKIP_ENV_VALIDATION": defineEnv(
 				process.env.SKIP_ENV_VALIDATION,
@@ -144,6 +148,10 @@ export default defineConfig({
 		],
 
 		define: {
+			"process.env.SUPERSET_LOCAL_MODE": defineEnv(
+				process.env.SUPERSET_LOCAL_MODE,
+				"false",
+			),
 			"process.env.NODE_ENV": defineEnv(process.env.NODE_ENV, "production"),
 			"process.env.SKIP_ENV_VALIDATION": defineEnv(
 				process.env.SKIP_ENV_VALIDATION,
@@ -164,6 +172,10 @@ export default defineConfig({
 
 	renderer: {
 		define: {
+			"process.env.SUPERSET_LOCAL_MODE": defineEnv(
+				process.env.SUPERSET_LOCAL_MODE,
+				"false",
+			),
 			"process.env.NODE_ENV": defineEnv(process.env.NODE_ENV),
 			"process.env.SKIP_ENV_VALIDATION": defineEnv(
 				process.env.SKIP_ENV_VALIDATION,

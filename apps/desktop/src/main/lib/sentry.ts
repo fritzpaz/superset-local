@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/electron/main";
 import { IPCMode } from "@sentry/electron/main";
+import { localFeatureDisabled } from "@superset/shared/local-runtime";
 import { session } from "electron";
 import { env } from "../env.main";
 
@@ -7,6 +8,7 @@ let sentryInitialized = false;
 
 export function initSentry(): void {
 	if (sentryInitialized) return;
+	if (localFeatureDisabled(process.env, "TELEMETRY")) return;
 
 	if (!env.SENTRY_DSN_DESKTOP || env.NODE_ENV !== "production") {
 		return;

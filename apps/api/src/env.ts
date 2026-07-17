@@ -47,6 +47,7 @@ export const env = createEnv({
 		RELAY_URL: z.string().url(),
 	},
 	client: {
+		NEXT_PUBLIC_SUPERSET_LOCAL_MODE: z.string().optional(),
 		NEXT_PUBLIC_API_URL: z.string().url(),
 		NEXT_PUBLIC_WEB_URL: z.string().url(),
 		NEXT_PUBLIC_ADMIN_URL: z.string().url(),
@@ -59,6 +60,8 @@ export const env = createEnv({
 			.optional(),
 	},
 	experimental__runtimeEnv: {
+		NEXT_PUBLIC_SUPERSET_LOCAL_MODE:
+			process.env.NEXT_PUBLIC_SUPERSET_LOCAL_MODE,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
 		NEXT_PUBLIC_WEB_URL: process.env.NEXT_PUBLIC_WEB_URL,

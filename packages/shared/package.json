@@ -108,6 +108,10 @@
 			"types": "./src/vercel-preview-origins.ts",
 			"default": "./src/vercel-preview-origins.ts"
 		},
+		"./local-runtime": {
+			"types": "./src/local-runtime.ts",
+			"default": "./src/local-runtime.ts"
+		},
 		"./tunnel-protocol": {
 			"types": "./src/tunnel-protocol.ts",
 			"default": "./src/tunnel-protocol.ts"

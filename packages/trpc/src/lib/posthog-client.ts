@@ -1,3 +1,4 @@
+import { localFeatureDisabled } from "@superset/shared/local-runtime";
 import { kv } from "@vercel/kv";
 import { env } from "../env";
 
@@ -153,6 +154,11 @@ export interface RetentionCohort {
 export async function executeQuery<T = unknown>(
 	query: PostHogQuery,
 ): Promise<PostHogQueryResult<T>> {
+	if (localFeatureDisabled(process.env, "TELEMETRY")) {
+		throw new Error(
+			"PostHog analytics queries are disabled in Superset Local mode",
+		);
+	}
 	const cacheKey = JSON.stringify(query);
 	const cached = await getCached<PostHogQueryResult<T>>(cacheKey);
 	if (cached) {

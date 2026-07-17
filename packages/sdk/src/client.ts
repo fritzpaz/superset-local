@@ -255,10 +255,33 @@ export class Superset {
 		relayURL = readEnv("SUPERSET_RELAY_URL"),
 		...opts
 	}: ClientOptions = {}) {
+		const localMode = readEnv("SUPERSET_LOCAL_MODE") === "true";
 		if (apiKey === undefined) {
 			throw new Errors.SupersetError(
 				"The SUPERSET_API_KEY environment variable is missing or empty; either provide it, or instantiate the Superset client with an apiKey option, like new Superset({ apiKey: 'My API Key' }).",
 			);
+		}
+		if (localMode && !baseURL) {
+			throw new Errors.SupersetError(
+				"SUPERSET_BASE_URL is required when SUPERSET_LOCAL_MODE=true; hosted defaults are disabled.",
+			);
+		}
+		if (localMode && !relayURL) {
+			throw new Errors.SupersetError(
+				"SUPERSET_RELAY_URL is required when SUPERSET_LOCAL_MODE=true; use an operator-controlled local relay.",
+			);
+		}
+		for (const [label, value] of [
+			["SUPERSET_BASE_URL", baseURL],
+			["SUPERSET_RELAY_URL", relayURL],
+		] as const) {
+			if (!localMode || !value) continue;
+			const hostname = new URL(value).hostname.toLowerCase();
+			if (hostname === "superset.sh" || hostname.endsWith(".superset.sh")) {
+				throw new Errors.SupersetError(
+					`${label} cannot use a Superset-operated endpoint in local mode.`,
+				);
+			}
 		}
 
 		const options: ClientOptions = {

@@ -1,3 +1,8 @@
+> **Superset Local fork:** this repository adds a loopback-only appliance, production local
+> authentication, local/external infrastructure setup, and fail-closed hosted-feature gates.
+> Start with the [Superset Local appliance guide](appliance/README.md). This is an independent,
+> modified ELv2 distribution and is not the Superset hosted service.
+
 <div align="center">
 
 <img width="full" alt="Superset" src="apps/marketing/public/images/readme-hero.png" />

@@ -12,6 +12,25 @@ const desktopDevOrigins =
 			]
 		: [];
 
+const localDisabledPrefixes = [
+	"/api/automations/",
+	"/api/chat/tools/web-search",
+	"/api/desktop/version",
+	"/api/github/",
+	"/api/hosts/jobs/",
+	"/api/integrations/",
+	"/api/proxy/linear-image",
+	"/api/trpc/analytics.",
+	"/api/trpc/automation.",
+	"/api/trpc/billing.",
+	"/api/trpc/integration.",
+	"/api/trpc/support.",
+];
+
+export function isDisabledLocalApiPath(pathname: string): boolean {
+	return localDisabledPrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
 function getAllowedOrigins(deploymentOrigin: string) {
 	return [
 		env.NEXT_PUBLIC_WEB_URL,
@@ -54,6 +73,16 @@ export default function proxy(req: NextRequest) {
 	// Handle preflight
 	if (req.method === "OPTIONS") {
 		return new NextResponse(null, { status: 204, headers: corsHeaders });
+	}
+
+	if (
+		process.env.SUPERSET_LOCAL_MODE === "true" &&
+		isDisabledLocalApiPath(req.nextUrl.pathname)
+	) {
+		return NextResponse.json(
+			{ error: "This hosted integration is disabled in Superset Local" },
+			{ status: 404, headers: corsHeaders },
+		);
 	}
 
 	// Add CORS headers to all responses
