@@ -24,7 +24,7 @@ jobs:
 
       - name: Validate generated local configuration
         run: |
-          node appliance/bin/superset-local.js init --profile local --non-interactive --config "$RUNNER_TEMP/superset-local.json" --state-dir "$RUNNER_TEMP/state"
+          node appliance/bin/superset-local.js init --profile local --non-interactive --source-root "$GITHUB_WORKSPACE" --config "$RUNNER_TEMP/superset-local.json" --state-dir "$RUNNER_TEMP/state"
           node appliance/bin/superset-local.js doctor --strict --config "$RUNNER_TEMP/superset-local.json"
           docker compose -f appliance/assets/compose.yaml --env-file "$RUNNER_TEMP/state/runtime.env" --profile local --profile application config --quiet
 
