@@ -14,6 +14,7 @@ if (process.env.NODE_ENV !== "production") {
 
 const isProduction = process.env.NODE_ENV === "production";
 const isLocal = process.env.SUPERSET_LOCAL_MODE === "true";
+const isHipaaMode = process.env.SUPERSET_HIPAA_MODE === "true";
 const apiOrigin = process.env.NEXT_PUBLIC_API_URL
 	? new URL(process.env.NEXT_PUBLIC_API_URL).origin
 	: null;
@@ -53,15 +54,24 @@ const contentSecurityPolicy = [
 	]
 		.filter(Boolean)
 		.join(" "),
-	"font-src 'self' data: https://fonts.gstatic.com",
+	["font-src 'self' data:", !isHipaaMode && "https://fonts.gstatic.com"]
+		.filter(Boolean)
+		.join(" "),
 	"form-action 'self'",
 	"frame-ancestors 'none'",
-	"img-src 'self' data: blob: https:",
+	["img-src 'self' data: blob:", !isHipaaMode && "https:"]
+		.filter(Boolean)
+		.join(" "),
 	"object-src 'none'",
 	["script-src 'self' 'unsafe-inline'", !isProduction && "'unsafe-eval'"]
 		.filter(Boolean)
 		.join(" "),
-	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+	[
+		"style-src 'self' 'unsafe-inline'",
+		!isHipaaMode && "https://fonts.googleapis.com",
+	]
+		.filter(Boolean)
+		.join(" "),
 	"worker-src 'self' blob:",
 ].join("; ");
 

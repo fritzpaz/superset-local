@@ -349,6 +349,7 @@ export function buildConfiguration(
 		SUP_LOCAL_SOURCE_ROOT: sourceRoot,
 		SUP_LOCAL_IMAGE_TAG: composeProject.replace(/^superset-local-/, ""),
 		SUPERSET_LOCAL_MODE: "true",
+		SUPERSET_HIPAA_MODE: "false",
 		NEXT_PUBLIC_SUPERSET_LOCAL_MODE: "true",
 		SUP_LOCAL_PROFILE: profile,
 		SUP_LOCAL_CLOUD_DISABLED: "true",

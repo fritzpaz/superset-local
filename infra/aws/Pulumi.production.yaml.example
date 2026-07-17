@@ -1,0 +1,18 @@
+config:
+  aws:region: us-east-1
+  superset-hipaa-aws:awsAccountId: "111122223333"
+  superset-hipaa-aws:availabilityZones:
+    - us-east-1a
+    - us-east-1b
+  superset-hipaa-aws:domainName: superset.example.com
+  superset-hipaa-aws:certificateArn: arn:aws:acm:us-east-1:111122223333:certificate/replace-me
+  superset-hipaa-aws:hostedZoneId: Z0123456789EXAMPLE
+  # Images must be immutable registry references when enforceImageDigests is true.
+  superset-hipaa-aws:appImage: 111122223333.dkr.ecr.us-east-1.amazonaws.com/superset-local@sha256:replace-me
+  superset-hipaa-aws:electricImage: 111122223333.dkr.ecr.us-east-1.amazonaws.com/electric@sha256:replace-me
+  superset-hipaa-aws:redisHttpImage: 111122223333.dkr.ecr.us-east-1.amazonaws.com/serverless-redis-http@sha256:replace-me
+  superset-hipaa-aws:highAvailability: false
+  superset-hipaa-aws:backupRetentionDays: 7
+  superset-hipaa-aws:logRetentionDays: 30
+  # Optional existing SNS topic for alarm delivery.
+  # superset-hipaa-aws:alarmTopicArn: arn:aws:sns:us-east-1:111122223333:operations

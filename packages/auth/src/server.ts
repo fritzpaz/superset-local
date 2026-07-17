@@ -34,11 +34,15 @@ import {
 	resolveSessionOrganizationState,
 	type SessionOrganizationContext,
 } from "./lib/resolve-session-organization-state";
+import { getAuthSecurityPolicy } from "./lib/security-policy";
 import { stripeClient } from "./stripe";
 import { formatPrice, getOrganizationOwners } from "./utils";
 
 const qstash = new Client({ token: env.QSTASH_TOKEN });
 const localMode = isSupersetLocalMode(process.env);
+const authSecurityPolicy = getAuthSecurityPolicy(
+	process.env.SUPERSET_HIPAA_MODE === "true",
+);
 
 const userOptions = {
 	additionalFields: {
@@ -105,13 +109,10 @@ export const auth = betterAuth({
 			: []),
 	],
 	session: {
-		expiresIn: 60 * 60 * 24 * 30,
-		updateAge: 60 * 60 * 24,
+		expiresIn: authSecurityPolicy.sessionExpiresIn,
+		updateAge: authSecurityPolicy.sessionUpdateAge,
 		storeSessionInDatabase: true,
-		cookieCache: {
-			enabled: true,
-			maxAge: 60 * 5,
-		},
+		cookieCache: authSecurityPolicy.cookieCache,
 	},
 	user: userOptions,
 	advanced: {
@@ -129,6 +130,7 @@ export const auth = betterAuth({
 			process.env.NODE_ENV === "development" ||
 			process.env.VERCEL_ENV === "preview",
 		autoSignIn: true,
+		minPasswordLength: authSecurityPolicy.minimumPasswordLength,
 	},
 	socialProviders: {
 		github: {
@@ -209,9 +211,7 @@ export const auth = betterAuth({
 			enableMetadata: true,
 			enableSessionForAPIKeys: true,
 			defaultPrefix: "sk_live_",
-			rateLimit: {
-				enabled: false,
-			},
+			rateLimit: authSecurityPolicy.apiKeyRateLimit,
 		}),
 		jwt({
 			jwks: {

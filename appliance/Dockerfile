@@ -1,7 +1,9 @@
 FROM oven/bun:1.3.14-debian
 
 WORKDIR /opt/superset-local
-COPY . .
+RUN chown bun:bun /opt/superset-local
+COPY --chown=bun:bun . .
+USER bun
 # The appliance runs the API/web services only. Electron native rebuilds are
 # intentionally excluded from this headless image and are built by desktop CI.
 RUN bun install --frozen-lockfile --ignore-scripts
@@ -9,9 +11,11 @@ RUN bun install --frozen-lockfile --ignore-scripts
 ARG NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
 ARG NEXT_PUBLIC_WEB_URL=http://127.0.0.1:3000
 ARG NEXT_PUBLIC_ELECTRIC_URL=http://127.0.0.1:8787
+ARG SUPERSET_HIPAA_MODE=false
 
 ENV NODE_ENV=production \
     SUPERSET_LOCAL_MODE=true \
+    SUPERSET_HIPAA_MODE=${SUPERSET_HIPAA_MODE} \
     NEXT_PUBLIC_SUPERSET_LOCAL_MODE=true \
     NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
     NEXT_PUBLIC_WEB_URL=${NEXT_PUBLIC_WEB_URL} \
