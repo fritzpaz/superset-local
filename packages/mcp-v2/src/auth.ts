@@ -1,6 +1,7 @@
 import { auth, mintUserJwt } from "@superset/auth/server";
 import { db } from "@superset/db/client";
 import { members, users } from "@superset/db/schema";
+import { isTrustedClientAzp } from "@superset/shared/auth";
 import { verifyAccessToken } from "better-auth/oauth2";
 import { eq } from "drizzle-orm";
 
@@ -138,6 +139,13 @@ async function resolveOAuth(
 		})) as Record<string, unknown>;
 	} catch {
 		throw new McpUnauthorizedError("Invalid OAuth token");
+	}
+	// Mirror the tRPC boundary: dynamic client registration is open, so a
+	// token minted to an unknown client must not be accepted as its subject.
+	if (!isTrustedClientAzp(payload.azp)) {
+		throw new McpUnauthorizedError(
+			"OAuth token was issued to an untrusted client",
+		);
 	}
 	if (typeof payload.sub !== "string" || !payload.sub) {
 		throw new McpUnauthorizedError("OAuth token missing sub claim");

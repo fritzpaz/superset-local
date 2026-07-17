@@ -1,7 +1,47 @@
 import { auth } from "@superset/auth/server";
+import { isTrustedClientAzp } from "@superset/shared/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
 const { GET: _GET, POST: _POST } = toNextJsHandler(auth);
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+	const payloadSegment = token.split(".")[1];
+	if (!payloadSegment) return null;
+	try {
+		const parsed = JSON.parse(
+			Buffer.from(payloadSegment, "base64url").toString("utf8"),
+		);
+		return parsed && typeof parsed === "object"
+			? (parsed as Record<string, unknown>)
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Userinfo returns the token subject's identity, so mirror the trusted-client
+ * `azp` gate applied at the tRPC and MCP boundaries. Reading the claim without
+ * verifying the signature is sound here: `azp` cannot be altered without
+ * breaking the signature, and tokens that fail decoding or verification are
+ * rejected by Better Auth itself.
+ */
+function untrustedUserinfoResponse(req: Request): Response | null {
+	const match = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i);
+	const token = match?.[1];
+	if (!token) return null;
+	const payload = decodeJwtPayload(token);
+	if (payload && !isTrustedClientAzp(payload.azp)) {
+		return new Response(JSON.stringify({ error: "invalid_token" }), {
+			status: 401,
+			headers: {
+				"WWW-Authenticate": 'Bearer error="invalid_token"',
+				"Content-Type": "application/json",
+			},
+		});
+	}
+	return null;
+}
 
 /**
  * Normalize localhost variants in a URL so that `localhost` and `127.0.0.1`
@@ -15,6 +55,10 @@ function normalizeLocalhostUri(uri: string): string {
 
 const GET = async (req: Request) => {
 	const url = new URL(req.url);
+	if (url.pathname.endsWith("/oauth2/userinfo")) {
+		const rejected = untrustedUserinfoResponse(req);
+		if (rejected) return rejected;
+	}
 	if (url.pathname.endsWith("/oauth2/authorize")) {
 		const redirectUri = url.searchParams.get("redirect_uri");
 		if (redirectUri) {
@@ -30,6 +74,10 @@ const GET = async (req: Request) => {
 
 const POST = async (req: Request) => {
 	const url = new URL(req.url);
+	if (url.pathname.endsWith("/oauth2/userinfo")) {
+		const rejected = untrustedUserinfoResponse(req);
+		if (rejected) return rejected;
+	}
 	if (url.pathname.endsWith("/oauth2/register")) {
 		const cloned = req.clone();
 		const body = await cloned.json().catch(() => null);

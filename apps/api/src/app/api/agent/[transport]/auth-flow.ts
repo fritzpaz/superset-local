@@ -2,6 +2,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { createMcpServer } from "@superset/mcp";
 import type { McpContext } from "@superset/mcp/auth";
+import { isTrustedClientAzp } from "@superset/shared/auth";
 import type { verifyAccessToken as verifyOAuthAccessToken } from "better-auth/oauth2";
 import { getOAuthProtectedResourceMetadataUrl } from "@/lib/oauth-metadata";
 
@@ -159,6 +160,15 @@ function buildOAuthAuthInfo(
 	bearerToken: string,
 	payload: Record<string, unknown>,
 ): AuthInfo | undefined {
+	// Mirror the tRPC boundary: dynamic client registration is open, so a
+	// token minted to an unknown client must not be accepted as its subject.
+	if (!isTrustedClientAzp(payload.azp)) {
+		console.error("[mcp/auth] Access token minted to untrusted OAuth client", {
+			azp: payload.azp,
+		});
+		return undefined;
+	}
+
 	if (
 		typeof payload.sub !== "string" ||
 		typeof payload.organizationId !== "string"
