@@ -9,6 +9,7 @@ The modifications are intended to:
 - replace Superset-operated runtime dependencies with local or operator-controlled services;
 - add explicit endpoint configuration with no Superset-hosted defaults;
 - disable cloud, Relay, telemetry, diagnostics upload, and automatic update connections;
+- prevent upstream preview, production, and Relay deployment jobs from running in the fork;
 - add a local initializer, service appliance, endpoint policy, verification, and documentation;
 - preserve Superset copyright, attribution, license notices, and license-key functionality.
 

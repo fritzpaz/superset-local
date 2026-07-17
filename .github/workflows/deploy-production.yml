@@ -11,6 +11,7 @@ env:
 jobs:
   deploy-database:
     name: Deploy Database Migrations
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
 
@@ -42,6 +43,7 @@ jobs:
 
   deploy-api:
     name: Deploy API to Vercel
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
     needs: deploy-database
@@ -177,6 +179,7 @@ jobs:
 
   deploy-web:
     name: Deploy Web to Vercel
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
     needs: deploy-database
@@ -269,6 +272,7 @@ jobs:
 
   deploy-marketing:
     name: Deploy Marketing to Vercel
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
     needs: deploy-database
@@ -356,6 +360,7 @@ jobs:
 
   deploy-admin:
     name: Deploy Admin to Vercel
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
     needs: deploy-database
@@ -447,6 +452,7 @@ jobs:
 
   deploy-electric-proxy:
     name: Deploy Electric Proxy to Cloudflare
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
 
@@ -478,6 +484,7 @@ jobs:
 
   deploy-docs:
     name: Deploy Docs to Vercel
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
     needs: deploy-database

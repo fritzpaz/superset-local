@@ -22,6 +22,7 @@ concurrency:
 jobs:
   deploy-relay:
     name: Deploy Relay to Fly
+    if: github.repository == 'superset-sh/superset'
     runs-on: ubuntu-latest
     environment: production
 
