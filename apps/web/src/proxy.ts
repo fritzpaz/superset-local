@@ -11,6 +11,8 @@ const publicRoutes = [
 	"/cli/auth/code",
 ];
 
+const localDisabledRoutes = ["/integrations", "/settings/billing"];
+
 function isPublicRoute(pathname: string): boolean {
 	return publicRoutes.some((route) => pathname.startsWith(route));
 }
@@ -21,6 +23,12 @@ export default async function proxy(req: NextRequest) {
 	});
 
 	const pathname = req.nextUrl.pathname;
+	if (
+		process.env.SUPERSET_LOCAL_MODE === "true" &&
+		localDisabledRoutes.some((route) => pathname.startsWith(route))
+	) {
+		return new NextResponse("Not available in Superset Local", { status: 404 });
+	}
 
 	if (
 		session &&

@@ -1,30 +1,31 @@
 {
-  "name": "superset-local",
-  "version": "0.1.0",
-  "description": "Local-only appliance layer for Superset",
-  "license": "Elastic-2.0",
-  "type": "module",
-  "bin": {
-    "superset-local": "bin/superset-local.js"
-  },
-  "files": [
-    "assets",
-    "bin",
-    "docs",
-    "integration",
-    "scripts",
-    "src",
-    "LICENSE.md",
-    "MODIFICATIONS.md",
-    "README.md"
-  ],
-  "scripts": {
-    "test": "node --test",
-    "check": "node --check bin/superset-local.js && node --check src/cli.mjs && node --check src/policy.mjs && node --test",
-    "audit:endpoints": "node scripts/audit-endpoints.mjs",
-    "pack:check": "npm pack --dry-run --cache \"${TMPDIR:-/tmp}/superset-local-npm-cache-${UID:-user}\""
-  },
-  "engines": {
-    "node": ">=20"
-  }
+	"name": "superset-local",
+	"version": "0.1.0",
+	"description": "Local-only appliance layer for Superset",
+	"license": "Elastic-2.0",
+	"type": "module",
+	"bin": {
+		"superset-local": "bin/superset-local.js"
+	},
+	"files": [
+		"assets",
+		"bin",
+		"docs",
+		"integration",
+		"scripts",
+		"src",
+		"LICENSE.md",
+		"MODIFICATIONS.md",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node --test",
+		"check": "node --check bin/superset-local.js && node --check src/cli.mjs && node --check src/policy.mjs && node --test",
+		"audit:endpoints": "node scripts/audit-endpoints.mjs",
+		"audit:endpoints:baseline": "node scripts/audit-endpoints.mjs --write-baseline",
+		"pack:check": "npm pack --dry-run --cache \"${TMPDIR:-/tmp}/superset-local-npm-cache-${UID:-user}\""
+	},
+	"engines": {
+		"node": ">=20"
+	}
 }

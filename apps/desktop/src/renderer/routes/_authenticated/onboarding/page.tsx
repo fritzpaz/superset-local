@@ -9,6 +9,7 @@ import { FaAws } from "react-icons/fa";
 import { HiArrowUpRight } from "react-icons/hi2";
 import { LuCheck } from "react-icons/lu";
 import { SiGithub, SiOpenai } from "react-icons/si";
+import { env } from "renderer/env.renderer";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import { GhAuthDialog } from "./components/GhAuthDialog";
 import {
@@ -98,7 +99,7 @@ function OnboardingDashboardPage() {
 					actionIcon={<HiArrowUpRight className="size-3.5" />}
 					onAction={() =>
 						window.open(
-							"https://docs.superset.sh/providers",
+							`${env.NEXT_PUBLIC_DOCS_URL}/providers`,
 							"_blank",
 							"noopener,noreferrer",
 						)

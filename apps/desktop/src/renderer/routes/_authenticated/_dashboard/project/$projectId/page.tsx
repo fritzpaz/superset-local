@@ -29,6 +29,7 @@ import {
 	HiChevronRight,
 	HiChevronUpDown,
 } from "react-icons/hi2";
+import { env } from "renderer/env.renderer";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import { formatRelativeTime } from "renderer/lib/formatRelativeTime";
 import { invalidateProjectScriptQueries } from "renderer/lib/project-scripts";
@@ -328,7 +329,7 @@ function ProjectPage() {
 										These commands run automatically when a workspace is
 										created.{" "}
 										<a
-											href="https://docs.superset.sh/setup-teardown-scripts"
+											href={`${env.NEXT_PUBLIC_DOCS_URL}/setup-teardown-scripts`}
 											target="_blank"
 											rel="noopener noreferrer"
 											className="group inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground transition-colors"

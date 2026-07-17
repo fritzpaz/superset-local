@@ -1,3 +1,4 @@
+import { localFeatureDisabled } from "@superset/shared/local-runtime";
 import { setRelaySocketTelemetry } from "@superset/workspace-client";
 import posthogFull from "posthog-js/dist/module.full.no-external";
 import type { PostHog } from "posthog-js/react";
@@ -7,6 +8,10 @@ import { env } from "../env.renderer";
 export const posthog = posthogFull as unknown as PostHog;
 
 export function initPostHog() {
+	if (localFeatureDisabled(process.env, "TELEMETRY")) {
+		console.log("[posthog] Disabled by Superset Local runtime policy");
+		return;
+	}
 	if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
 		console.log("[posthog] No key configured, skipping");
 		return;

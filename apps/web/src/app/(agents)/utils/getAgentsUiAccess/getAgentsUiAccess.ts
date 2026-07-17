@@ -7,11 +7,14 @@ import { cache } from "react";
 
 import { env } from "@/env";
 
-const posthog = new PostHog(env.NEXT_PUBLIC_POSTHOG_KEY, {
-	host: env.NEXT_PUBLIC_POSTHOG_HOST,
-	flushAt: 1,
-	flushInterval: 0,
-});
+const localMode = env.NEXT_PUBLIC_SUPERSET_LOCAL_MODE === "true";
+const posthog = localMode
+	? null
+	: new PostHog(env.NEXT_PUBLIC_POSTHOG_KEY, {
+			host: env.NEXT_PUBLIC_POSTHOG_HOST,
+			flushAt: 1,
+			flushInterval: 0,
+		});
 
 export const getAgentsUiAccess = cache(async () => {
 	const session = await auth.api.getSession({
@@ -21,12 +24,13 @@ export const getAgentsUiAccess = cache(async () => {
 	if (!session?.user) {
 		redirect("/sign-in");
 	}
+	if (localMode) return { hasAgentsUiAccess: true, session };
 
 	let hasAgentsUiAccess = false;
 
 	try {
 		hasAgentsUiAccess = Boolean(
-			await posthog.getFeatureFlag(
+			await posthog?.getFeatureFlag(
 				FEATURE_FLAGS.WEB_AGENTS_UI_ACCESS,
 				session.user.id,
 			),

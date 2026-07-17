@@ -7,6 +7,7 @@ import {
 	DEV_PASSWORD,
 } from "@superset/shared/dev-credentials";
 import { Button } from "@superset/ui/button";
+import { Input } from "@superset/ui/input";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,12 +17,15 @@ import { env } from "@/env";
 
 const LAST_USED_METHOD_KEY = "superset-last-auth-method";
 
-type AuthMethod = "github" | "google" | "dev";
+type AuthMethod = "github" | "google" | "dev" | "local";
 
 function readLastUsedMethod(): AuthMethod | null {
 	try {
 		const stored = window.localStorage.getItem(LAST_USED_METHOD_KEY);
-		return stored === "github" || stored === "google" || stored === "dev"
+		return stored === "github" ||
+			stored === "google" ||
+			stored === "dev" ||
+			stored === "local"
 			? stored
 			: null;
 	} catch {
@@ -88,6 +92,8 @@ export default function SignInPage() {
 	};
 
 	const [isLoadingDev, setIsLoadingDev] = useState(false);
+	const [localEmail, setLocalEmail] = useState("");
+	const [localPassword, setLocalPassword] = useState("");
 
 	const signInAsDev = async () => {
 		setIsLoadingDev(true);
@@ -120,6 +126,23 @@ export default function SignInPage() {
 		}
 	};
 
+	const signInLocal = async () => {
+		setIsLoadingDev(true);
+		setError(null);
+		rememberLastUsedMethod("local");
+		try {
+			const result = await authClient.signIn.email({
+				email: localEmail,
+				password: localPassword,
+			});
+			if (result.error) throw new Error(result.error.message);
+			window.location.href = callbackURL;
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Local sign-in failed");
+			setIsLoadingDev(false);
+		}
+	};
+
 	const isLoading = isLoadingGoogle || isLoadingGithub || isLoadingDev;
 
 	const lastUsedBadge = (
@@ -140,6 +163,30 @@ export default function SignInPage() {
 				{error && (
 					<p className="text-destructive text-center text-sm">{error}</p>
 				)}
+				{env.NEXT_PUBLIC_SUPERSET_LOCAL_MODE === "true" && (
+					<>
+						<Input
+							type="email"
+							value={localEmail}
+							onChange={(event) => setLocalEmail(event.target.value)}
+							placeholder="Administrator email"
+							autoComplete="username"
+						/>
+						<Input
+							type="password"
+							value={localPassword}
+							onChange={(event) => setLocalPassword(event.target.value)}
+							placeholder="Password"
+							autoComplete="current-password"
+						/>
+						<Button
+							disabled={isLoading || !localEmail || !localPassword}
+							onClick={signInLocal}
+						>
+							{isLoadingDev ? "Signing in..." : "Sign in locally"}
+						</Button>
+					</>
+				)}
 				{process.env.NODE_ENV === "development" && (
 					<Button
 						variant="outline"
@@ -151,26 +198,30 @@ export default function SignInPage() {
 						{lastUsedMethod === "dev" && lastUsedBadge}
 					</Button>
 				)}
-				<Button
-					variant="outline"
-					disabled={isLoading}
-					onClick={signInWithGithub}
-					className="relative w-full"
-				>
-					<FaGithub className="mr-2 size-4" />
-					{isLoadingGithub ? "Loading..." : "Sign in with GitHub"}
-					{lastUsedMethod === "github" && lastUsedBadge}
-				</Button>
-				<Button
-					variant="outline"
-					disabled={isLoading}
-					onClick={signInWithGoogle}
-					className="relative w-full"
-				>
-					<FcGoogle className="mr-2 size-4" />
-					{isLoadingGoogle ? "Loading..." : "Sign in with Google"}
-					{lastUsedMethod === "google" && lastUsedBadge}
-				</Button>
+				{env.NEXT_PUBLIC_SUPERSET_LOCAL_MODE !== "true" && (
+					<Button
+						variant="outline"
+						disabled={isLoading}
+						onClick={signInWithGithub}
+						className="relative w-full"
+					>
+						<FaGithub className="mr-2 size-4" />
+						{isLoadingGithub ? "Loading..." : "Sign in with GitHub"}
+						{lastUsedMethod === "github" && lastUsedBadge}
+					</Button>
+				)}
+				{env.NEXT_PUBLIC_SUPERSET_LOCAL_MODE !== "true" && (
+					<Button
+						variant="outline"
+						disabled={isLoading}
+						onClick={signInWithGoogle}
+						className="relative w-full"
+					>
+						<FcGoogle className="mr-2 size-4" />
+						{isLoadingGoogle ? "Loading..." : "Sign in with Google"}
+						{lastUsedMethod === "google" && lastUsedBadge}
+					</Button>
+				)}
 				<p className="text-muted-foreground px-8 text-center text-sm">
 					By clicking continue, you agree to our{" "}
 					<a

@@ -12,21 +12,23 @@ Electric containers or operator-provided infrastructure. Configuration has no fa
 
 ## Current status
 
-This repository currently contains the appliance foundation, not a production-ready desktop
-distribution. The task workspace was created without the upstream application source or a Git
-remote, so the generated disable flags are not yet wired into Superset's Electron, web, API,
-CLI, SDK, and MCP request paths. `superset-local doctor --strict` intentionally fails until the
-integration contract is implemented and verified against a pinned upstream commit.
+The source appliance is integrated with upstream commit
+`b13a92c7d665e7b4019b06626ae2596005911340`. It builds optimized API/web containers, migrates and
+seeds the database, provides production email/password authentication, disables hosted OAuth,
+telemetry, crash upload, updates, Relay defaults, and hosted integration routes, and supports
+local or operator-provided Postgres, Redis, and Electric.
 
-Do not use this revision as evidence of HIPAA compliance or as proof that Superset cannot make
-outbound connections. See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+The Electron app can be built from the same generated environment, but it is not placed inside
+the headless container. Provider CLIs, Git hosts, package registries, and operator infrastructure
+remain optional external systems. This distribution is not evidence of HIPAA compliance; see
+[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## Install
 
 From a source checkout:
 
 ```sh
-./scripts/install.sh
+./appliance/scripts/install.sh
 export PATH="${SUPERSET_LOCAL_HOME:-$HOME/.superset-local-appliance}/bin:$PATH"
 superset-local --help
 ```
@@ -34,7 +36,7 @@ superset-local --help
 It can also be installed as a normal Node command:
 
 ```sh
-npm install --global .
+npm install --global ./appliance
 ```
 
 Node.js 20 or newer is required. The local service profile also requires Docker Compose. The
@@ -46,10 +48,14 @@ Run this from the Superset source root:
 
 ```sh
 superset-local init --profile local
-superset-local doctor
+superset-local doctor --strict
+superset-local build
 superset-local up
-superset-local run -- npm run dev
 ```
+
+The generated configuration records that checkout as an absolute Docker build context, so an
+installer-managed or globally installed command continues to build the intended source tree.
+Use `--source-root /absolute/path/to/superset-local` when the config lives elsewhere.
 
 The initializer writes:
 
@@ -58,8 +64,9 @@ The initializer writes:
   variables, mode `0600`;
 - a unique Compose project name, so separate checkouts do not share state.
 
-Postgres, Redis, Electric, and the Neon compatibility proxy bind to `127.0.0.1`. Persistent
-volumes are retained by `superset-local down`.
+Postgres, Redis, Electric, the Neon compatibility proxy, API, web app, authenticated Electric
+proxy, and Redis HTTP compatibility service bind to `127.0.0.1`. `up` runs migrations and makes
+the generated administrator ready. Persistent volumes are retained by `superset-local down`.
 
 ## Use operator-provided infrastructure
 
@@ -73,8 +80,9 @@ superset-local init --profile external \
   --redis-url "$REDIS_URL" \
   --electric-url "$ELECTRIC_URL"
 
-superset-local doctor
-superset-local run -- npm run dev
+superset-local doctor --strict
+superset-local build
+superset-local up
 ```
 
 Infrastructure hostnames are added to the generated default-deny allowlist. Additional hosts
@@ -86,9 +94,10 @@ from `superset-local config` output.
 The appliance uses three layers:
 
 1. Configuration rejects `superset.sh` and every subdomain and requires local app origins.
-2. The runtime endpoint policy offers a guarded fetch boundary and a default-deny hostname
-   allowlist.
-3. `npm run audit:endpoints` finds unreviewed hard-coded Superset domains in upstream app code.
+2. API/web middleware rejects hosted integration, billing, update, analytics, support, and
+   automation paths in local mode; desktop and SDK composition roots reject Superset origins.
+3. `npm run audit:endpoints` compares shipped runtime code with a reviewed, fingerprinted
+   endpoint baseline, so a new or changed Superset URL fails CI.
 
 These are application controls, not a replacement for an outbound firewall. A production
 deployment must use OS/network egress enforcement and packet/DNS capture as described in
@@ -105,11 +114,11 @@ deployment must use OS/network egress enforcement and packet/DNS capture as desc
 ## Development
 
 ```sh
-npm test
-npm run check
-npm run audit:endpoints
-npm run pack:check
-shellcheck scripts/install.sh
+npm --prefix appliance test
+npm --prefix appliance run check
+npm --prefix appliance run audit:endpoints
+npm --prefix appliance run pack:check
+shellcheck appliance/scripts/install.sh appliance/scripts/container-init.sh
 ```
 
 No paid-feature entitlement or license-key code may be removed, changed, disabled, or bypassed.

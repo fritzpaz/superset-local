@@ -2,6 +2,7 @@
 **/.next
 **/dist
 **/build
+**/release
 **/.turbo
 **/.cache
 .git

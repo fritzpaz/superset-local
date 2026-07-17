@@ -6,6 +6,7 @@ import {
 } from "@superset/shared/dev-credentials";
 import { Badge } from "@superset/ui/badge";
 import { Button } from "@superset/ui/button";
+import { Input } from "@superset/ui/input";
 import { Spinner } from "@superset/ui/spinner";
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -24,11 +25,14 @@ export const Route = createFileRoute("/sign-in/")({
 
 const LAST_USED_METHOD_KEY = "superset-last-auth-method";
 
-type AuthMethod = AuthProvider | "dev";
+type AuthMethod = AuthProvider | "dev" | "local";
 
 function readLastUsedMethod(): AuthMethod | null {
 	const stored = window.localStorage.getItem(LAST_USED_METHOD_KEY);
-	return stored === "github" || stored === "google" || stored === "dev"
+	return stored === "github" ||
+		stored === "google" ||
+		stored === "dev" ||
+		stored === "local"
 		? stored
 		: null;
 }
@@ -39,6 +43,8 @@ function SignInPage() {
 	const navigate = useNavigate();
 	const [isLoadingDev, setIsLoadingDev] = useState(false);
 	const [devError, setDevError] = useState<string | null>(null);
+	const [localEmail, setLocalEmail] = useState("");
+	const [localPassword, setLocalPassword] = useState("");
 	const [lastUsedMethod, setLastUsedMethod] = useState(readLastUsedMethod);
 	const { hasLocalToken, isPending, session } = useSessionRecovery();
 
@@ -134,6 +140,43 @@ function SignInPage() {
 		}
 	};
 
+	const signInLocal = async () => {
+		setIsLoadingDev(true);
+		setDevError(null);
+		rememberLastUsedMethod("local");
+		try {
+			const response = await fetch(
+				`${env.NEXT_PUBLIC_API_URL}/api/auth/sign-in/email`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "omit",
+					body: JSON.stringify({ email: localEmail, password: localPassword }),
+				},
+			);
+			const data = (await response.json().catch(() => ({}))) as {
+				token?: string;
+				message?: string;
+			};
+			if (!response.ok || !data.token) {
+				throw new Error(data.message ?? "Invalid email or password");
+			}
+			await persistToken.mutateAsync({
+				token: data.token,
+				expiresAt: new Date(
+					Date.now() + 1000 * 60 * 60 * 24 * 30,
+				).toISOString(),
+			});
+			setAuthToken(data.token);
+			await navigate({ to: "/workspace", replace: true });
+		} catch (error) {
+			setDevError(
+				error instanceof Error ? error.message : "Local sign-in failed",
+			);
+			setIsLoadingDev(false);
+		}
+	};
+
 	const lastUsedBadge = <Badge variant="secondary">Last used</Badge>;
 
 	return (
@@ -158,6 +201,31 @@ function SignInPage() {
 					</div>
 
 					<div className="flex flex-col gap-3 w-full max-w-xs">
+						{env.SUPERSET_LOCAL_MODE === "true" && (
+							<>
+								<Input
+									type="email"
+									value={localEmail}
+									onChange={(event) => setLocalEmail(event.target.value)}
+									placeholder="Administrator email"
+									autoComplete="username"
+								/>
+								<Input
+									type="password"
+									value={localPassword}
+									onChange={(event) => setLocalPassword(event.target.value)}
+									placeholder="Password"
+									autoComplete="current-password"
+								/>
+								<Button
+									size="lg"
+									onClick={signInLocal}
+									disabled={isLoadingDev || !localEmail || !localPassword}
+								>
+									{isLoadingDev ? "Signing in..." : "Sign in locally"}
+								</Button>
+							</>
+						)}
 						{env.NODE_ENV === "development" && (
 							<Button
 								variant="outline"
@@ -177,29 +245,33 @@ function SignInPage() {
 								{devError}
 							</p>
 						)}
-						<Button
-							variant="outline"
-							size="lg"
-							onClick={() => signIn("github")}
-							className="w-full gap-3"
-							disabled={signInMutation.isPending}
-						>
-							<FaGithub className="size-5" />
-							Continue with GitHub
-							{lastUsedMethod === "github" && lastUsedBadge}
-						</Button>
+						{env.SUPERSET_LOCAL_MODE !== "true" && (
+							<Button
+								variant="outline"
+								size="lg"
+								onClick={() => signIn("github")}
+								className="w-full gap-3"
+								disabled={signInMutation.isPending}
+							>
+								<FaGithub className="size-5" />
+								Continue with GitHub
+								{lastUsedMethod === "github" && lastUsedBadge}
+							</Button>
+						)}
 
-						<Button
-							variant="outline"
-							size="lg"
-							onClick={() => signIn("google")}
-							className="w-full gap-3"
-							disabled={signInMutation.isPending}
-						>
-							<FcGoogle className="size-5" />
-							Continue with Google
-							{lastUsedMethod === "google" && lastUsedBadge}
-						</Button>
+						{env.SUPERSET_LOCAL_MODE !== "true" && (
+							<Button
+								variant="outline"
+								size="lg"
+								onClick={() => signIn("google")}
+								className="w-full gap-3"
+								disabled={signInMutation.isPending}
+							>
+								<FcGoogle className="size-5" />
+								Continue with Google
+								{lastUsedMethod === "google" && lastUsedBadge}
+							</Button>
+						)}
 					</div>
 
 					<p className="mt-8 text-xs text-muted-foreground/70 text-center max-w-xs">

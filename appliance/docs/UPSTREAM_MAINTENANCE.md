@@ -10,16 +10,8 @@ from upstream feature code.
 - `main` contains upstream history plus reviewed Superset Local commits.
 - Feature work uses short-lived branches and normal main-based pull requests.
 
-This task workspace has no remote and no upstream source yet. Bootstrap that history before
-claiming the repository is a fork; do not copy a release archive on top of the empty initial
-commit because that loses ancestry.
-
-## Initial import
-
-Perform the import in a clean administrative checkout with working network and GitHub
-authentication. Preserve this appliance work as commits, establish the real upstream history,
-then replay the appliance commits on top. Review all conflicts; do not rewrite a shared branch or
-force-push without explicit coordination.
+The current repository preserves upstream ancestry. `origin` is the `superset-local` GitHub fork
+and `upstream` is configured fetch-only.
 
 ## Routine update
 
@@ -27,8 +19,8 @@ force-push without explicit coordination.
 git fetch upstream --tags
 git switch -c update/upstream-<version> main
 git merge --no-ff upstream/main
-npm run audit:endpoints
-npm run check
+npm --prefix appliance run audit:endpoints
+npm --prefix appliance run check
 ```
 
 Then inspect new or changed code for:
@@ -41,8 +33,9 @@ Then inspect new or changed code for:
 - database schema and Electric compatibility changes;
 - license-key or entitlement code, which must remain intact.
 
-Update the feature matrix and threat model, record the tested upstream commit in the runtime
-contract, and open one pull request. Never mark the contract verified based only on compilation.
+Do not regenerate `endpoint-baseline.json` until every changed reference has been reviewed. Update
+the feature matrix and threat model, record the tested upstream commit in the runtime contract,
+and open one pull request. Never mark the contract verified based only on compilation.
 
 ## Conflict minimization
 

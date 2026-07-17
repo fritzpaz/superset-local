@@ -16,6 +16,7 @@ import { PaymentFailedEmail } from "@superset/email/emails/payment-failed";
 import { SubscriptionCancelledEmail } from "@superset/email/emails/subscription-cancelled";
 import { SubscriptionStartedEmail } from "@superset/email/emails/subscription-started";
 import { canInvite, type OrganizationRole } from "@superset/shared/auth";
+import { isSupersetLocalMode } from "@superset/shared/local-runtime";
 import { getTrustedVercelPreviewOrigins } from "@superset/shared/vercel-preview-origins";
 import { Client } from "@upstash/qstash";
 import { betterAuth } from "better-auth";
@@ -37,6 +38,7 @@ import { stripeClient } from "./stripe";
 import { formatPrice, getOrganizationOwners } from "./utils";
 
 const qstash = new Client({ token: env.QSTASH_TOKEN });
+const localMode = isSupersetLocalMode(process.env);
 
 const userOptions = {
 	additionalFields: {
@@ -123,6 +125,7 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled:
+			localMode ||
 			process.env.NODE_ENV === "development" ||
 			process.env.VERCEL_ENV === "preview",
 		autoSignIn: true,
@@ -392,7 +395,7 @@ export const auth = betterAuth({
 				},
 
 				afterCreateOrganization: async ({ organization, user }) => {
-					if (process.env.NODE_ENV !== "development") {
+					if (process.env.NODE_ENV !== "development" && !localMode) {
 						const customer = await stripeClient.customers.create({
 							name: organization.name,
 							email: user.email,

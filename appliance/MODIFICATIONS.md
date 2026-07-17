@@ -2,6 +2,8 @@
 
 This distribution has been modified from Superset by the Superset Local maintainers.
 
+Current verified upstream base: `b13a92c7d665e7b4019b06626ae2596005911340` (July 17, 2026).
+
 The modifications are intended to:
 
 - replace Superset-operated runtime dependencies with local or operator-controlled services;
@@ -12,4 +14,6 @@ The modifications are intended to:
 
 This notice is provided to satisfy the prominent-modification requirement in the Elastic
 License 2.0. The verified upstream base commit must be recorded in
-`integration/runtime-contract.json` for every release.
+`integration/runtime-contract.json` for every release. The local-mode changes are concentrated in
+`appliance/`, `packages/shared/src/local-runtime.ts`, application composition roots, auth seeding,
+and the web/API hosted-route boundaries to minimize future upstream merge conflicts.

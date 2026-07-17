@@ -1,9 +1,11 @@
+import { localFeatureDisabled } from "@superset/shared/local-runtime";
 import { env } from "../env.renderer";
 
 let sentryInitialized = false;
 
 export async function initSentry(): Promise<void> {
 	if (sentryInitialized) return;
+	if (localFeatureDisabled(process.env, "TELEMETRY")) return;
 
 	if (!env.SENTRY_DSN_DESKTOP || env.NODE_ENV !== "production") {
 		return;

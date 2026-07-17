@@ -1,30 +1,33 @@
 # Feature compatibility
 
-This matrix is the release target. Rows marked “expected” still require validation after the
-upstream application tree is integrated.
+This matrix describes the local-mode behavior at the pinned upstream commit recorded in the
+runtime contract.
 
 | Feature | Local target | Reason or replacement |
 | --- | --- | --- |
-| Local Git repositories and worktrees | Expected | Filesystem and Git are local |
-| Terminals, panes, presets, and agent launches | Expected | Local host process; agent providers remain operator-selected |
-| Diff viewer, editor, browser preview, and port detection | Expected | Local desktop and loopback host server |
-| Local setup/teardown/run scripts | Expected | Filesystem and child processes are local |
-| Local scheduled automations | Expected | Requires local scheduler validation |
+| Local Git repositories and worktrees | Supported | Filesystem and Git remain local; the full upstream test suite covers host/worktree behavior |
+| Terminals, panes, presets, and agent launches | Supported in desktop | Local host process; agent providers remain operator-selected |
+| Diff viewer, editor, browser preview, and port detection | Supported in desktop | Local desktop and loopback host server |
+| Local setup/teardown/run scripts | Supported | Filesystem and child processes are local |
+| Local scheduled automations | Unavailable | Upstream scheduling depends on QStash and Relay; API routes fail closed |
 | Postgres, Redis, and Electric | Supported by appliance | Local Compose or operator-controlled URLs |
-| Production sign-in | Replacement required | Upstream development sign-in is not a hardened production auth system |
-| Superset account and organization management | Unavailable | Requires Superset cloud identity/control plane |
-| Shared cloud project registry and organization discovery | Unavailable | Replace with local database records/import workflow |
+| Production sign-in | Supported | Better Auth email/password with generated administrator credentials |
+| Local users and organizations | Supported | Stored in appliance Postgres; organization creation skips Stripe side effects in local mode |
+| Shared cloud project registry and organization discovery | Local records only | No Superset identity/control plane |
 | Remote hosts and remote workspaces | Unavailable | Traffic is routed through Superset Relay |
 | Mobile access to remote workspaces | Unavailable | Depends on remote host discovery and Relay |
 | Superset Relay | Disabled | No Superset-operated service is allowed in the data path |
 | Organization-wide CLI listing and remote CLI targets | Unavailable | Cloud API and Relay dependent; `--local` behavior is the target |
-| Remote SDK and MCP control | Unavailable | Local loopback transports may be retained after validation |
+| SDK and MCP control | Loopback only | SDK requires explicit local API/Relay URLs and rejects Superset-operated URLs |
 | Superset-managed Slack and Linear workflows | Unavailable | Cloud OAuth/webhook/control-plane dependent; direct local plugins may be designed separately |
 | Subscription and license administration | Unavailable offline | License-key and entitlement enforcement must not be changed or bypassed |
 | Superset-hosted updates and release discovery | Disabled | Use signed internal artifacts and an operator-controlled update channel |
 | Usage analytics, crash upload, and shared diagnostics | Disabled | Logs remain local; manual export requires review and redaction |
-| Hosted docs, marketing, changelog, and support links | Disabled or external-browser only | They must never be contacted automatically |
-| OAuth through Superset-configured providers | Replacement required | Configure operator-controlled OIDC or local auth directly |
+| Hosted docs, marketing, changelog, and support links | Disabled | Generated values point to the local web origin; support routes fail closed |
+| GitHub/Google login | Disabled | Local email/password replaces hosted OAuth |
+| GitHub, Slack, Linear, Tavily, QStash integrations | Disabled by default | Web/API entrypoints return 404 in local mode; no provider credentials are required |
+| Web/API container | Supported | Optimized Next.js production builds with migration, seed, and health checks |
+| Electron container | Not applicable | Electron is built for the host OS, not the headless service image |
 
 ## External dependencies that are still allowed
 

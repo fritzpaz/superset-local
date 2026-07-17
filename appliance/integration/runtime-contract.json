@@ -1,18 +1,21 @@
 {
-  "contractVersion": 1,
-  "upstream": "https://github.com/superset-sh/superset",
-  "verifiedCommit": null,
-  "status": "not-integrated",
-  "requiredGates": [
-    "SUPERSET_CLOUD_DISABLED",
-    "SUPERSET_RELAY_DISABLED",
-    "SUPERSET_TELEMETRY_DISABLED",
-    "SUPERSET_AUTO_UPDATE_DISABLED"
-  ],
-  "requirements": [
-    "Every Superset-owned outbound request passes through the endpoint policy",
-    "Production authentication has a local implementation",
-    "Cloud, Relay, telemetry, diagnostics upload, and update checks fail closed",
-    "Desktop, web, API, CLI, SDK, and MCP entrypoints share the same local configuration"
-  ]
+	"contractVersion": 1,
+	"upstream": "https://github.com/superset-sh/superset",
+	"verifiedCommit": "b13a92c7d665e7b4019b06626ae2596005911340",
+	"status": "verified",
+	"requiredGates": [
+		"SUPERSET_LOCAL_MODE",
+		"SUPERSET_CLOUD_DISABLED",
+		"SUPERSET_RELAY_DISABLED",
+		"SUPERSET_TELEMETRY_DISABLED",
+		"SUPERSET_AUTO_UPDATE_DISABLED",
+		"SUPERSET_HOSTED_INTEGRATIONS_DISABLED"
+	],
+	"requirements": [
+		"Generated service endpoints reject Superset-operated hosts and have no local-mode hosted fallback",
+		"Production authentication has a local implementation",
+		"Cloud, Relay, hosted integrations, telemetry, diagnostics upload, and update checks fail closed",
+		"Desktop, web, API, CLI, and SDK entrypoints consume the generated local configuration",
+		"Production containers pass migration, seed, health, sign-in, and authenticated-session checks"
+	]
 }

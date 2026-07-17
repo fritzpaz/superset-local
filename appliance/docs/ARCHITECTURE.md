@@ -24,7 +24,7 @@ The appliance layer owns configuration generation, secrets, backing services, pr
 endpoint validation, and endpoint auditing. Upstream owns the UI, workspace orchestration,
 terminals, worktrees, diff viewer, agents, and entitlement decisions.
 
-The upstream patch should do only four things:
+The upstream patch does four things:
 
 1. Resolve every service origin through a local runtime adapter with no hosted default.
 2. Route every Superset-owned outbound request through `createEndpointPolicy`.
@@ -37,9 +37,9 @@ and diagnostics.
 
 ## Runtime contract
 
-`integration/runtime-contract.json` is release evidence. It stays `not-integrated` until the
-upstream tree is present and all required gates are wired and tested. A release changes it to
-`verified` only with a pinned `verifiedCommit` and test evidence.
+`integration/runtime-contract.json` is release evidence. It pins the exact upstream base and is
+marked verified only after the generated configuration, local auth, production builds,
+middleware gates, source audit, monorepo tests, and container smoke tests pass.
 
 Environment flags are explicit and default to disabled in generated configurations:
 
@@ -48,15 +48,15 @@ Environment flags are explicit and default to disabled in generated configuratio
 - `SUPERSET_TELEMETRY_DISABLED=true`
 - `SUPERSET_AUTO_UPDATE_DISABLED=true`
 
-Flags do not provide enforcement until upstream consumes them. The endpoint policy and network
-firewall are independent enforcement layers.
+Application composition roots consume local mode directly. The endpoint policy, hosted-route
+middleware, reviewed endpoint baseline, and operator network firewall are independent layers.
 
 ## Data flow
 
-Local mode binds each managed port to `127.0.0.1`; Docker services communicate on their private
-Compose network. External mode starts no containers and allowlists only the database, cache, and
-Electric hostnames supplied to the initializer. Application API and web origins remain loopback
-in both profiles.
+Local mode binds each published port to `127.0.0.1`; Docker services communicate on their private
+Compose network. External mode omits the local Postgres, Redis, Electric, and Neon services while
+retaining the application services and Redis HTTP adapter. Only supplied infrastructure hosts
+are added to policy metadata. Application API and web origins remain loopback in both profiles.
 
 Agent CLIs are child processes and may call their configured model providers. The JavaScript
 endpoint guard cannot constrain child processes, Git, package managers, browsers, or arbitrary
