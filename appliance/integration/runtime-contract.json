@@ -1,0 +1,18 @@
+{
+  "contractVersion": 1,
+  "upstream": "https://github.com/superset-sh/superset",
+  "verifiedCommit": null,
+  "status": "not-integrated",
+  "requiredGates": [
+    "SUPERSET_CLOUD_DISABLED",
+    "SUPERSET_RELAY_DISABLED",
+    "SUPERSET_TELEMETRY_DISABLED",
+    "SUPERSET_AUTO_UPDATE_DISABLED"
+  ],
+  "requirements": [
+    "Every Superset-owned outbound request passes through the endpoint policy",
+    "Production authentication has a local implementation",
+    "Cloud, Relay, telemetry, diagnostics upload, and update checks fail closed",
+    "Desktop, web, API, CLI, SDK, and MCP entrypoints share the same local configuration"
+  ]
+}

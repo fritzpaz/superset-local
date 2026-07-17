@@ -1,0 +1,74 @@
+name: superset-local
+
+services:
+  postgres:
+    profiles: [local]
+    image: ${SUP_LOCAL_POSTGRES_IMAGE:-postgres:17.4-alpine}
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+    environment:
+      POSTGRES_USER: ${SUP_LOCAL_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${SUP_LOCAL_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${SUP_LOCAL_POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    profiles: [local]
+    image: ${SUP_LOCAL_REDIS_IMAGE:-redis:7.4.2-alpine}
+    command: [sh, -c, "exec redis-server --appendonly yes --requirepass \"$${SUP_LOCAL_REDIS_PASSWORD}\""]
+    environment:
+      SUP_LOCAL_REDIS_PASSWORD: ${SUP_LOCAL_REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD-SHELL, "redis-cli -a \"$${SUP_LOCAL_REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  neon-proxy:
+    profiles: [local]
+    image: ${SUP_LOCAL_NEON_PROXY_IMAGE:-ghcr.io/timowilhelm/local-neon-http-proxy:main}
+    environment:
+      PG_CONNECTION_STRING: postgresql://${SUP_LOCAL_POSTGRES_USER}:${SUP_LOCAL_POSTGRES_PASSWORD}@postgres:5432/${SUP_LOCAL_POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_NEON_PROXY_PORT:-4444}:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  electric:
+    profiles: [local]
+    image: ${SUP_LOCAL_ELECTRIC_IMAGE:-electricsql/electric:1.7.4}
+    environment:
+      DATABASE_URL: ${SUP_LOCAL_ELECTRIC_DATABASE_URL}
+      ELECTRIC_SECRET: ${SUP_LOCAL_ELECTRIC_SECRET}
+    ports:
+      - "127.0.0.1:${SUP_LOCAL_ELECTRIC_PORT:-3100}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
